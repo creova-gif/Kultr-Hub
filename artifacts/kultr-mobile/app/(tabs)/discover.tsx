@@ -3,7 +3,6 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -15,10 +14,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryPills } from "@/components/CategoryPill";
+import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { EventCardCompact } from "@/components/EventCardCompact";
 import { useApp } from "@/context/AppContext";
 import { CATEGORIES, EVENTS } from "@/constants/data";
-import { EA_COUNTRIES, type EACountry } from "@/constants/currencies";
+import { EA_COUNTRIES } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
 
 export default function DiscoverScreen() {
@@ -194,100 +194,16 @@ export default function DiscoverScreen() {
         </View>
       </ScrollView>
 
-      {/* Country Picker Modal */}
-      <Modal
+      <CountryPickerModal
         visible={showCountryPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCountryPicker(false)}
-      >
-        <CountryPickerSheet
-          currentCode={userCountry.code}
-          onSelect={(country) => {
-            Haptics.selectionAsync();
-            setUserCountry(country);
-            setShowCountryPicker(false);
-          }}
-          onClose={() => setShowCountryPicker(false)}
-          colors={colors}
-        />
-      </Modal>
+        currentCode={userCountry.code}
+        onSelect={(country) => {
+          setUserCountry(country);
+          setShowCountryPicker(false);
+        }}
+        onClose={() => setShowCountryPicker(false)}
+      />
     </>
-  );
-}
-
-function CountryPickerSheet({
-  currentCode,
-  onSelect,
-  onClose,
-  colors,
-}: {
-  currentCode: string;
-  onSelect: (c: EACountry) => void;
-  onClose: () => void;
-  colors: any;
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
-      <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-        <View>
-          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Your Location</Text>
-          <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-            Sets your currency and payment methods
-          </Text>
-        </View>
-        <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]}>
-          <Feather name="x" size={18} color={colors.foreground} />
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-        {EA_COUNTRIES.map((country) => {
-          const isSelected = country.code === currentCode;
-          return (
-            <Pressable
-              key={country.code}
-              onPress={() => onSelect(country)}
-              style={({ pressed }) => [
-                styles.countryRow,
-                {
-                  backgroundColor: isSelected
-                    ? "rgba(255,107,0,0.08)"
-                    : pressed
-                    ? colors.muted
-                    : "transparent",
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <Text style={styles.countryRowFlag}>{country.flag}</Text>
-              <View style={styles.countryRowInfo}>
-                <Text style={[styles.countryRowName, { color: colors.foreground, fontWeight: isSelected ? "800" : "600" }]}>
-                  {country.name}
-                </Text>
-                <Text style={[styles.countryRowCurrency, { color: colors.mutedForeground }]}>
-                  {country.currencyName} ({country.currencySymbol}) · {country.phonePrefix}
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.countryRowMethods}>
-                    {country.paymentMethods.map((m) => (
-                      <View key={m.id} style={[styles.methodPill, { backgroundColor: colors.muted, borderLeftColor: m.color, borderLeftWidth: 2 }]}>
-                        <Text style={[styles.methodPillText, { color: colors.foreground }]}>{m.label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              {isSelected && (
-                <View style={[styles.selectedCheck, { backgroundColor: "#FF6B00" }]}>
-                  <Feather name="check" size={12} color="#fff" />
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
   );
 }
 

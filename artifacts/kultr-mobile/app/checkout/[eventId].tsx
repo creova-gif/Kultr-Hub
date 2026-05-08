@@ -5,7 +5,6 @@ import React, { useMemo, useState } from "react";
 import {
   Alert,
   Image,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -16,12 +15,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { useApp } from "@/context/AppContext";
 import { EVENT_IMAGES, formatDate, formatTime, getEventById } from "@/constants/data";
 import {
-  EA_COUNTRIES,
   convertCurrency,
-  type EACountry,
   type PaymentMethod,
 } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
@@ -382,109 +380,17 @@ export default function CheckoutScreen() {
         </Pressable>
       </View>
 
-      {/* Country Picker Modal */}
-      <Modal
+      <CountryPickerModal
         visible={showCountryPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCountryPicker(false)}
-      >
-        <CountryPickerModal
-          currentCode={userCountry.code}
-          onSelect={(country) => {
-            Haptics.selectionAsync();
-            setUserCountry(country);
-            setSelectedMethodId("");
-            setPhone("");
-            setShowCountryPicker(false);
-          }}
-          onClose={() => setShowCountryPicker(false)}
-          colors={colors}
-        />
-      </Modal>
-    </View>
-  );
-}
-
-function CountryPickerModal({
-  currentCode,
-  onSelect,
-  onClose,
-  colors,
-}: {
-  currentCode: string;
-  onSelect: (c: EACountry) => void;
-  onClose: () => void;
-  colors: any;
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
-      <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-        <Text style={[styles.modalTitle, { color: colors.foreground }]}>Select Your Country</Text>
-        <Pressable onPress={onClose} style={[styles.backBtn, { backgroundColor: colors.muted }]}>
-          <Feather name="x" size={18} color={colors.foreground} />
-        </Pressable>
-      </View>
-      <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-        Payment methods and currency will update to match your country
-      </Text>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-        {EA_COUNTRIES.map((country) => {
-          const isSelected = country.code === currentCode;
-          return (
-            <Pressable
-              key={country.code}
-              onPress={() => onSelect(country)}
-              style={({ pressed }) => [
-                styles.countryRow,
-                {
-                  backgroundColor: isSelected
-                    ? "rgba(255,107,0,0.08)"
-                    : pressed
-                    ? colors.muted
-                    : "transparent",
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <Text style={styles.countryRowFlag}>{country.flag}</Text>
-              <View style={styles.countryRowInfo}>
-                <Text style={[styles.countryRowName, { color: colors.foreground }]}>
-                  {country.name}
-                </Text>
-                <Text style={[styles.countryRowCurrency, { color: colors.mutedForeground }]}>
-                  {country.currencyName} · {country.currencySymbol}
-                </Text>
-                <View style={styles.countryRowMethods}>
-                  {country.paymentMethods.slice(0, 3).map((m) => (
-                    <View
-                      key={m.id}
-                      style={[styles.methodPill, { backgroundColor: colors.muted }]}
-                    >
-                      <Text style={[styles.methodPillText, { color: colors.mutedForeground }]}>
-                        {m.label}
-                      </Text>
-                    </View>
-                  ))}
-                  {country.paymentMethods.length > 3 && (
-                    <View style={[styles.methodPill, { backgroundColor: colors.muted }]}>
-                      <Text style={[styles.methodPillText, { color: colors.mutedForeground }]}>
-                        +{country.paymentMethods.length - 3}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              {isSelected && (
-                <View style={[styles.selectedCheck, { backgroundColor: "#FF6B00" }]}>
-                  <Feather name="check" size={12} color="#fff" />
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+        currentCode={userCountry.code}
+        onSelect={(country) => {
+          setUserCountry(country);
+          setSelectedMethodId("");
+          setPhone("");
+          setShowCountryPicker(false);
+        }}
+        onClose={() => setShowCountryPicker(false)}
+      />
     </View>
   );
 }
