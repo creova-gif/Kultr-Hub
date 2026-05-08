@@ -87,11 +87,16 @@ export default function HomeScreen() {
 
         {/* Nav row */}
         <View style={styles.navRow}>
-          <View>
-            <Text style={styles.logoText}>
-              <Text style={{ color: "#FF6B00" }}>K</Text>ultr
-            </Text>
-            <Text style={styles.logoSub}>East Africa</Text>
+          <View style={styles.logoRow}>
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
+            <View>
+              <Text style={styles.logoText}>ultr</Text>
+              <Text style={styles.logoSub}>East Africa</Text>
+            </View>
           </View>
           <View style={styles.navActions}>
             <Pressable
@@ -350,7 +355,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  logoText: { color: "#fff", fontSize: 28, fontWeight: "900", letterSpacing: -1 },
+  logoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  logoImg: { width: 36, height: 36, borderRadius: 8, backgroundColor: "#1A1A1A" },
+  logoText: { color: "#fff", fontSize: 26, fontWeight: "900", letterSpacing: -1 },
   logoSub: { color: "#555", fontSize: 10, fontWeight: "600", letterSpacing: 2, marginTop: -2 },
   navActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   navBtn: {

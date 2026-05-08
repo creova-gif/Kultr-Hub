@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -11,10 +12,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { type CreatedEvent, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+
+const LOGO = require("@/assets/images/logo.png");
 
 const CATEGORIES = ["Music", "Art", "Food", "Heritage", "Comedy", "Sports", "Nightlife"] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -119,11 +123,14 @@ export default function CreateEventScreen() {
         >
           <Feather name="arrow-left" size={18} color={colors.foreground} />
         </Pressable>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Create Event</Text>
-          <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-            {userCountry.flag} Listing in {userCountry.currencyCode}
-          </Text>
+        <View style={styles.headerBrand}>
+          <Image source={LOGO} style={styles.headerLogoImg} resizeMode="contain" />
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Create Event</Text>
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+              {userCountry.flag} Listing in {userCountry.currencyCode}
+            </Text>
+          </View>
         </View>
         <View style={styles.liveChip}>
           <View style={styles.liveDot} />
@@ -327,6 +334,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  headerBrand: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  headerLogoImg: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#1A1A1A" },
   headerTitle: { fontSize: 20, fontWeight: "800" },
   headerSub: { fontSize: 12, marginTop: 1 },
   liveChip: {

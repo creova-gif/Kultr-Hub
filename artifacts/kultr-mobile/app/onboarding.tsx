@@ -5,6 +5,7 @@ import React, { useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -12,10 +13,13 @@ import {
   Text,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EA_COUNTRIES } from "@/constants/currencies";
 import { useApp } from "@/context/AppContext";
+
+const LOGO = require("@/assets/images/logo.png");
 
 const { width } = Dimensions.get("window");
 
@@ -87,9 +91,9 @@ export default function OnboardingScreen() {
         {step === 0 && (
           <View style={styles.step}>
             <View style={styles.welcomeCenter}>
-              {/* Logo mark */}
-              <View style={styles.logoMark}>
-                <Text style={styles.logoK}>K</Text>
+              {/* Logo image */}
+              <View style={styles.logoContainer}>
+                <Image source={LOGO} style={styles.logoImage} resizeMode="contain" />
               </View>
               <Text style={styles.brand}>KULTR</Text>
               <Text style={styles.tagline}>Bold Culture.{"\n"}Timeless Impact.</Text>
@@ -276,7 +280,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 0,
   },
-  logoMark: {
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    overflow: "hidden",
+    marginBottom: 20,
+    backgroundColor: "#1A1A1A",
+  },
+  logoImage: { width: 80, height: 80 },
+  logoMark_UNUSED: {
     width: 72,
     height: 72,
     borderRadius: 36,
