@@ -1,0 +1,32 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "fXw3KnQ0DYAqcBYTHI5T1"
+uri = "file://artifacts/kultr-mobile/assets/images/icon.png"
+type = "image"
+title = "kultr app icon"
+
+[[generated]]
+id = "GQCODQOLoCTkkuxsNaAAn"
+uri = "file://artifacts/kultr-mobile/assets/images/event_concert.png"
+type = "image"
+title = "afrobeats concert event"
+
+[[generated]]
+id = "WmFHWczYt9e-EMrSUYRhx"
+uri = "file://artifacts/kultr-mobile/assets/images/event_art.png"
+type = "image"
+title = "african art exhibition"
+
+[[generated]]
+id = "-rXvzhIZCCHR2A9V3Va-c"
+uri = "file://artifacts/kultr-mobile/assets/images/event_food.png"
+type = "image"
+title = "east african food festival"
+
+[[generated]]
+id = "YOrwVVaNgLx2A4VRC9chN"
+uri = "file://artifacts/kultr-mobile/assets/images/event_culture.png"
+type = "image"
+title = "african cultural festival"
