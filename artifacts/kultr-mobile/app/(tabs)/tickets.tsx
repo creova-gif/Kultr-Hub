@@ -13,13 +13,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { EVENT_IMAGES, EVENTS, formatDate, formatTime, getEventById } from "@/constants/data";
+import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
 
 export default function TicketsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { tickets } = useApp();
+  const { getEventById } = useEventCatalog();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 

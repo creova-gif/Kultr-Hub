@@ -17,9 +17,10 @@ import { CategoryPills } from "@/components/CategoryPill";
 import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { EventCardCompact } from "@/components/EventCardCompact";
 import { useApp } from "@/context/AppContext";
-import { CATEGORIES, EVENTS } from "@/constants/data";
+import { CATEGORIES } from "@/constants/data";
 import { EA_COUNTRIES } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
 
 export default function DiscoverScreen() {
   const colors = useColors();
@@ -28,10 +29,11 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("For You");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const { events } = useEventCatalog();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
-  const filtered = EVENTS.filter((e) => {
+  const filtered = events.filter((e) => {
     const matchesSearch =
       search.trim() === "" ||
       e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -43,7 +45,7 @@ export default function DiscoverScreen() {
     return matchesSearch && matchesCat;
   });
 
-  const cities = [...new Set(EVENTS.map((e) => e.city))];
+  const cities = [...new Set(events.map((e) => e.city))];
 
   return (
     <>
@@ -117,7 +119,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Browse by City</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cityRow}>
               {cities.map((city) => {
-                const country = EVENTS.find((e) => e.city === city);
+                const country = events.find((e) => e.city === city);
                 return (
                   <Pressable
                     key={city}

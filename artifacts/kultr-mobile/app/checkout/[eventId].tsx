@@ -18,12 +18,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { useApp } from "@/context/AppContext";
-import { EVENT_IMAGES, formatDate, formatTime, getEventById } from "@/constants/data";
+import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";
 import {
   convertCurrency,
   type PaymentMethod,
 } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
+import { useEventDetail } from "@/hooks/useEventDetail";
 
 export default function CheckoutScreen() {
   const { eventId, ticketTypeIndex } = useLocalSearchParams<{
@@ -33,8 +34,7 @@ export default function CheckoutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addTicket, userCountry, setUserCountry, authToken } = useApp();
-
-  const event = getEventById(eventId ?? "");
+  const { event } = useEventDetail(eventId);
   const typeIdx = Number(ticketTypeIndex ?? "0");
   const ticketType = event?.ticketTypes[typeIdx] ?? event?.ticketTypes[0];
 
