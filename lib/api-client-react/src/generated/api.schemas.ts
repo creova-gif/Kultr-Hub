@@ -14,6 +14,22 @@ export interface ErrorResponse {
   code?: string;
 }
 
+export type FxRatesRates = { [key: string]: number };
+
+export type FxRatesSource = (typeof FxRatesSource)[keyof typeof FxRatesSource];
+
+export const FxRatesSource = {
+  live: "live",
+  static: "static",
+} as const;
+
+export interface FxRates {
+  base: string;
+  rates: FxRatesRates;
+  source: FxRatesSource;
+  fetchedAt: string;
+}
+
 export interface SignupRequest {
   email: string;
   /** @minLength 8 */
@@ -40,6 +56,25 @@ export interface UserProfile {
 export interface AuthResponse {
   token: string;
   user: UserProfile;
+}
+
+export interface OtpRequest {
+  phone: string;
+  countryCode?: string;
+}
+
+export interface OtpRequestResponse {
+  simulated: boolean;
+  expiresInSeconds: number;
+  /** Only present in simulated mode (no SMS gateway configured). */
+  devCode?: string;
+}
+
+export interface OtpVerifyRequest {
+  phone: string;
+  countryCode?: string;
+  code: string;
+  displayName?: string;
 }
 
 export interface TicketTypeSummary {
@@ -177,4 +212,8 @@ export type ListEventsParams = {
   featured?: boolean;
   limit?: number;
   offset?: number;
+};
+
+export type GetFxRatesParams = {
+  base?: string;
 };

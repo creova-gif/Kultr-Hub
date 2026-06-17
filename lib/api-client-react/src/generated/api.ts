@@ -23,9 +23,14 @@ import type {
   ErrorResponse,
   EventDetail,
   EventListResponse,
+  FxRates,
+  GetFxRatesParams,
   HealthStatus,
   ListEventsParams,
   LoginRequest,
+  OtpRequest,
+  OtpRequestResponse,
+  OtpVerifyRequest,
   PurchaseTicketRequest,
   SignupRequest,
   TicketDetail,
@@ -288,6 +293,178 @@ export const useAuthLogin = <
   TContext
 > => {
   return useMutation(getAuthLoginMutationOptions(options));
+};
+
+/**
+ * @summary Request a one-time passcode by SMS
+ */
+export const getAuthOtpRequestUrl = () => {
+  return `/api/auth/otp/request`;
+};
+
+export const authOtpRequest = async (
+  otpRequest: OtpRequest,
+  options?: RequestInit,
+): Promise<OtpRequestResponse> => {
+  return customFetch<OtpRequestResponse>(getAuthOtpRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(otpRequest),
+  });
+};
+
+export const getAuthOtpRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authOtpRequest>>,
+    TError,
+    { data: BodyType<OtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authOtpRequest>>,
+  TError,
+  { data: BodyType<OtpRequest> },
+  TContext
+> => {
+  const mutationKey = ["authOtpRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authOtpRequest>>,
+    { data: BodyType<OtpRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authOtpRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthOtpRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authOtpRequest>>
+>;
+export type AuthOtpRequestMutationBody = BodyType<OtpRequest>;
+export type AuthOtpRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Request a one-time passcode by SMS
+ */
+export const useAuthOtpRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authOtpRequest>>,
+    TError,
+    { data: BodyType<OtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authOtpRequest>>,
+  TError,
+  { data: BodyType<OtpRequest> },
+  TContext
+> => {
+  return useMutation(getAuthOtpRequestMutationOptions(options));
+};
+
+/**
+ * @summary Verify a one-time passcode and sign in
+ */
+export const getAuthOtpVerifyUrl = () => {
+  return `/api/auth/otp/verify`;
+};
+
+export const authOtpVerify = async (
+  otpVerifyRequest: OtpVerifyRequest,
+  options?: RequestInit,
+): Promise<AuthResponse> => {
+  return customFetch<AuthResponse>(getAuthOtpVerifyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(otpVerifyRequest),
+  });
+};
+
+export const getAuthOtpVerifyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authOtpVerify>>,
+    TError,
+    { data: BodyType<OtpVerifyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authOtpVerify>>,
+  TError,
+  { data: BodyType<OtpVerifyRequest> },
+  TContext
+> => {
+  const mutationKey = ["authOtpVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authOtpVerify>>,
+    { data: BodyType<OtpVerifyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authOtpVerify(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthOtpVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authOtpVerify>>
+>;
+export type AuthOtpVerifyMutationBody = BodyType<OtpVerifyRequest>;
+export type AuthOtpVerifyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify a one-time passcode and sign in
+ */
+export const useAuthOtpVerify = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authOtpVerify>>,
+    TError,
+    { data: BodyType<OtpVerifyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authOtpVerify>>,
+  TError,
+  { data: BodyType<OtpVerifyRequest> },
+  TContext
+> => {
+  return useMutation(getAuthOtpVerifyMutationOptions(options));
 };
 
 /**
@@ -1085,6 +1262,100 @@ export function useGetTicket<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetTicketQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get exchange rates rebased to a currency
+ */
+export const getGetFxRatesUrl = (params?: GetFxRatesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/fx/rates?${stringifiedParams}`
+    : `/api/fx/rates`;
+};
+
+export const getFxRates = async (
+  params?: GetFxRatesParams,
+  options?: RequestInit,
+): Promise<FxRates> => {
+  return customFetch<FxRates>(getGetFxRatesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFxRatesQueryKey = (params?: GetFxRatesParams) => {
+  return [`/api/fx/rates`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFxRatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFxRates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFxRatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFxRates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFxRatesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFxRates>>> = ({
+    signal,
+  }) => getFxRates(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFxRates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFxRatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFxRates>>
+>;
+export type GetFxRatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get exchange rates rebased to a currency
+ */
+
+export function useGetFxRates<
+  TData = Awaited<ReturnType<typeof getFxRates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFxRatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFxRates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFxRatesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

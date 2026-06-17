@@ -16,6 +16,8 @@ tags:
     description: Event discovery and management
   - name: tickets
     description: Ticket purchase and retrieval
+  - name: fx
+    description: Foreign-exchange rates
 
 paths:
   /healthz:
@@ -78,6 +80,56 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/otp/request:
+    post:
+      operationId: authOtpRequest
+      tags: [auth]
+      summary: Request a one-time passcode by SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpRequest"
+      responses:
+        "200":
+          description: Code sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpRequestResponse"
+        "400":
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/otp/verify:
+    post:
+      operationId: authOtpVerify
+      tags: [auth]
+      summary: Verify a one-time passcode and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid or expired code
           content:
             application/json:
               schema:
@@ -306,6 +358,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ── FX ────────────────────────────────────────────────────────────────────
+  /fx/rates:
+    get:
+      operationId: getFxRates
+      tags: [fx]
+      summary: Get exchange rates rebased to a currency
+      parameters:
+        - name: base
+          in: query
+          required: false
+          schema:
+            type: string
+            default: KES
+      responses:
+        "200":
+          description: Exchange rates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxRates"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -331,6 +404,27 @@ components:
           type: string
       required:
         - message
+
+    FxRates:
+      type: object
+      properties:
+        base:
+          type: string
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+        source:
+          type: string
+          enum: [live, static]
+        fetchedAt:
+          type: string
+          format: date-time
+      required:
+        - base
+        - rates
+        - source
+        - fetchedAt
 
     # ── AUTH ────────────────────────────────────────────────────────────────
     SignupRequest:
@@ -374,6 +468,45 @@ components:
       required:
         - token
         - user
+
+    OtpRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        countryCode:
+          type: string
+      required:
+        - phone
+
+    OtpRequestResponse:
+      type: object
+      properties:
+        simulated:
+          type: boolean
+        expiresInSeconds:
+          type: integer
+        devCode:
+          type: string
+          description: Only present in simulated mode (no SMS gateway configured).
+      required:
+        - simulated
+        - expiresInSeconds
+
+    OtpVerifyRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        countryCode:
+          type: string
+        code:
+          type: string
+        displayName:
+          type: string
+      required:
+        - phone
+        - code
 
     UserProfile:
       type: object

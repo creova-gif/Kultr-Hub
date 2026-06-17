@@ -51,6 +51,46 @@ export const AuthLoginResponse = zod.object({
 });
 
 /**
+ * @summary Request a one-time passcode by SMS
+ */
+export const AuthOtpRequestBody = zod.object({
+  phone: zod.string(),
+  countryCode: zod.string().optional(),
+});
+
+export const AuthOtpRequestResponse = zod.object({
+  simulated: zod.boolean(),
+  expiresInSeconds: zod.number(),
+  devCode: zod
+    .string()
+    .optional()
+    .describe("Only present in simulated mode (no SMS gateway configured)."),
+});
+
+/**
+ * @summary Verify a one-time passcode and sign in
+ */
+export const AuthOtpVerifyBody = zod.object({
+  phone: zod.string(),
+  countryCode: zod.string().optional(),
+  code: zod.string(),
+  displayName: zod.string().optional(),
+});
+
+export const AuthOtpVerifyResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.string(),
+    email: zod.string(),
+    displayName: zod.string(),
+    avatarUrl: zod.string().nullish(),
+    countryCode: zod.string(),
+    isCreator: zod.boolean(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
  * @summary Get current authenticated user
  */
 export const AuthMeResponse = zod.object({
@@ -325,4 +365,20 @@ export const GetTicketResponse = zod.object({
     currency: zod.string(),
     status: zod.string(),
   }),
+});
+
+/**
+ * @summary Get exchange rates rebased to a currency
+ */
+export const getFxRatesQueryBaseDefault = `KES`;
+
+export const GetFxRatesQueryParams = zod.object({
+  base: zod.coerce.string().default(getFxRatesQueryBaseDefault),
+});
+
+export const GetFxRatesResponse = zod.object({
+  base: zod.string(),
+  rates: zod.record(zod.string(), zod.number()),
+  source: zod.enum(["live", "static"]),
+  fetchedAt: zod.coerce.date(),
 });

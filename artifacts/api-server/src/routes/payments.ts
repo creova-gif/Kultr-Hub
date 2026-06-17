@@ -5,6 +5,7 @@ import { db, ticketsTable, ticketTypesTable, eventsTable, usersTable } from "@wo
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { initializePayment, verifyPayment } from "../lib/paystack.js";
 import { initiateStkPush, queryStkPush } from "../lib/mpesa.js";
+import { normalizeMsisdn } from "../lib/phone.js";
 import type { Request, Response } from "express";
 
 const router = Router();
@@ -244,11 +245,12 @@ router.get("/callback", async (req: Request, res: Response) => {
  */
 router.post("/mpesa/stk-push", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
-  const { eventId, ticketTypeId, quantity = 1, phone } = req.body as {
+  const { eventId, ticketTypeId, quantity = 1, phone, countryCode } = req.body as {
     eventId: string;
     ticketTypeId: string;
     quantity?: number;
     phone: string;
+    countryCode?: string;
   };
 
   if (!eventId || !ticketTypeId || !phone) {
@@ -256,9 +258,10 @@ router.post("/mpesa/stk-push", requireAuth, async (req: Request, res: Response) 
     return;
   }
 
-  const [[event], [ticketType]] = await Promise.all([
+  const [[event], [ticketType], [user]] = await Promise.all([
     db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1),
     db.select().from(ticketTypesTable).where(eq(ticketTypesTable.id, ticketTypeId)).limit(1),
+    db.select().from(usersTable).where(eq(usersTable.id, authed.userId)).limit(1),
   ]);
 
   if (!event) { res.status(404).json({ message: "Event not found" }); return; }
@@ -273,8 +276,15 @@ router.post("/mpesa/stk-push", requireAuth, async (req: Request, res: Response) 
   const totalAmount = Number(ticketType.price) * quantity;
   const reference = generatePaymentRef();
 
-  // Normalise phone to 254XXXXXXXXX format
-  const normalised = phone.replace(/^\+/, "").replace(/^0/, "254");
+  // Normalise to a bare E.164 MSISDN using the caller's country (body override
+  // → user's stored country → defaults handled by the normalizer).
+  let normalised: string;
+  try {
+    normalised = normalizeMsisdn(phone, countryCode ?? user?.countryCode);
+  } catch (err) {
+    res.status(400).json({ message: err instanceof Error ? err.message : "Invalid phone number" });
+    return;
+  }
 
   try {
     const stkResult = await initiateStkPush({
