@@ -66,6 +66,7 @@ function RootLayoutNav() {
       <Stack.Screen name="saved" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="notifications" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="create-event" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="login" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }

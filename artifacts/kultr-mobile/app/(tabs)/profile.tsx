@@ -247,11 +247,21 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {/* Sign out */}
-      <Pressable style={[styles.signOutBtn, { borderColor: colors.border }]} onPress={() => clearAuth()}>
-        <Feather name="log-out" size={16} color="#D32F2F" />
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </Pressable>
+      {/* Sign in / Sign out */}
+      {authUser ? (
+        <Pressable style={[styles.signOutBtn, { borderColor: colors.border }]} onPress={() => clearAuth()}>
+          <Feather name="log-out" size={16} color="#D32F2F" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          style={[styles.signOutBtn, { borderColor: "#FF6B00" }]}
+          onPress={() => router.push("/login")}
+        >
+          <Feather name="log-in" size={16} color="#FF6B00" />
+          <Text style={[styles.signOutText, { color: "#FF6B00" }]}>Sign In</Text>
+        </Pressable>
+      )}
 
       <Text style={[styles.version, { color: colors.mutedForeground }]}>
         Kultr v1.0 · Bold Culture. Timeless Impact.
