@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Platform,
@@ -74,7 +75,7 @@ export default function ForYouScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { userInterests, setUserInterests } = useApp();
-  const { events } = useEventCatalog();
+  const { events, isLoading } = useEventCatalog();
   const [showRefine, setShowRefine] = useState(false);
   const [localInterests, setLocalInterests] = useState<string[]>(userInterests);
 
@@ -163,7 +164,22 @@ export default function ForYouScreen() {
 
         {/* ── Match Cards ── */}
         <View style={styles.cardList}>
-          {scored.map((event) => {
+          {isLoading && (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color="#FF6B00" />
+              <Text style={[styles.loadingText, { color: "#888" }]}>Finding your matches…</Text>
+            </View>
+          )}
+          {!isLoading && scored.length === 0 && (
+            <View style={styles.emptyWrap}>
+              <Feather name="star" size={36} color="#333" />
+              <Text style={[styles.emptyTitle, { color: "#fff" }]}>No matches yet</Text>
+              <Text style={[styles.emptyText, { color: "#888" }]}>
+                Refine your vibe above to discover events tailored to you.
+              </Text>
+            </View>
+          )}
+          {!isLoading && scored.map((event) => {
             const image = EVENT_IMAGES[event.imageKey];
             return (
               <Pressable
@@ -357,6 +373,11 @@ const styles = StyleSheet.create({
   refineBtnText: { fontSize: 12, fontWeight: "600" },
 
   cardList: { paddingHorizontal: 16, gap: 12 },
+  loadingWrap: { alignItems: "center", paddingVertical: 48, gap: 12 },
+  loadingText: { fontSize: 14, fontWeight: "600" },
+  emptyWrap: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 10 },
+  emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 8 },
+  emptyText: { fontSize: 13, textAlign: "center", lineHeight: 20 },
   matchCard: {
     flexDirection: "row",
     borderRadius: 16,

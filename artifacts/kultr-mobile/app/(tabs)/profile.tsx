@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -72,6 +73,8 @@ export default function ProfileScreen() {
         <Pressable
           onPress={() => router.push("/notifications")}
           style={[styles.iconBtn, { backgroundColor: colors.muted }]}
+          accessibilityLabel="Notifications"
+          accessibilityRole="button"
         >
           <Feather name="bell" size={18} color={colors.foreground} />
           <View style={styles.notifDot} />
@@ -182,7 +185,7 @@ export default function ProfileScreen() {
               style={[styles.eventRow, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
               <View style={[styles.eventStatusDot, {
-                backgroundColor: ev.status === "live" ? "#00C853" : ev.status === "ended" ? "#555" : "#FF6B00",
+                backgroundColor: ev.status === "live" ? "#00C853" : ev.status === "ended" ? "#777" : "#FF6B00",
               }]} />
               <View style={styles.eventRowLeft}>
                 <Text style={[styles.eventRowTitle, { color: colors.foreground }]} numberOfLines={1}>
@@ -258,7 +261,19 @@ export default function ProfileScreen() {
 
       {/* Sign in / Sign out */}
       {authUser ? (
-        <Pressable style={[styles.signOutBtn, { borderColor: colors.border }]} onPress={() => clearAuth()}>
+        <Pressable
+          style={[styles.signOutBtn, { borderColor: colors.border }]}
+          onPress={() => {
+            Alert.alert(
+              "Sign Out",
+              "Are you sure you want to sign out?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Sign Out", style: "destructive", onPress: clearAuth },
+              ],
+            );
+          }}
+        >
           <Feather name="log-out" size={16} color="#D32F2F" />
           <Text style={styles.signOutText}>Sign Out</Text>
         </Pressable>

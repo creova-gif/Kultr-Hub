@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Platform,
@@ -71,7 +72,7 @@ export default function SocialScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<SocialTab>("all");
-  const { events } = useEventCatalog();
+  const { events, isLoading } = useEventCatalog();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -105,7 +106,11 @@ export default function SocialScreen() {
             See what your friends are into.
           </Text>
         </View>
-        <Pressable style={[styles.notifBtn, { backgroundColor: colors.muted }]}>
+        <Pressable
+          style={[styles.notifBtn, { backgroundColor: colors.muted }]}
+          accessibilityLabel="Notifications"
+          accessibilityRole="button"
+        >
           <Feather name="bell" size={18} color={colors.foreground} />
         </Pressable>
       </View>
@@ -148,7 +153,21 @@ export default function SocialScreen() {
 
       {/* ── Event Cards ── */}
       <View style={styles.cardList}>
-        {socialEvents.map((event) => {
+        {isLoading && (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color="#FF6B00" />
+          </View>
+        )}
+        {!isLoading && socialEvents.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <Feather name="users" size={36} color="#333" />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No events yet</Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Check back soon — your friends will be going somewhere.
+            </Text>
+          </View>
+        )}
+        {!isLoading && socialEvents.map((event) => {
           const image = EVENT_IMAGES[event.imageKey];
           const friends = getFriends(event.id);
           const friendCount = getFriendCount(event.id);
@@ -344,6 +363,10 @@ const styles = StyleSheet.create({
   filtersBtnText: { fontSize: 12, fontWeight: "600" },
 
   cardList: { paddingHorizontal: 16, gap: 12 },
+  loadingWrap: { alignItems: "center", paddingVertical: 48 },
+  emptyWrap: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 10 },
+  emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 8 },
+  emptyText: { fontSize: 13, textAlign: "center", lineHeight: 20 },
 
   socialCard: {
     borderRadius: 16,

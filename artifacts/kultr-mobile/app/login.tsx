@@ -74,8 +74,8 @@ export default function LoginScreen() {
     );
   };
 
-  const handleVerify = () => {
-    const trimmed = otp.trim();
+  const handleVerify = (codeOverride?: string) => {
+    const trimmed = (codeOverride ?? otp).trim();
     if (trimmed.length < 6) {
       setError("Enter the 6-digit code");
       return;
@@ -226,6 +226,9 @@ export default function LoginScreen() {
                   setError("");
                 }}
                 autoComplete="tel"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleSendCode}
               />
 
               {!!error && (
@@ -294,8 +297,10 @@ export default function LoginScreen() {
                 onChangeText={(t) => {
                   setOtp(t);
                   setError("");
+                  if (t.length === 6) handleVerify(t);
                 }}
                 autoComplete="one-time-code"
+                autoFocus
               />
 
               <TextInput
@@ -363,7 +368,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: 20 },
-  backBtn: { padding: 4, alignSelf: "flex-start", marginBottom: 8 },
+  backBtn: { padding: 10, alignSelf: "flex-start", marginBottom: 4, minWidth: 44, minHeight: 44, justifyContent: "center" },
 
   logoRow: { alignItems: "center", marginBottom: 32 },
   logo: { width: 72, height: 72 },
