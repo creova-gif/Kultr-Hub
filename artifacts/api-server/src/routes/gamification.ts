@@ -227,6 +227,113 @@ router.post("/perks/unlock", requireAuth, async (req: Request, res: Response) =>
   }
 });
 
+/* ── GET /profile ────────────────────────────────────────────────────────
+ * Level, XP, streak calendar, and derived badge eligibility for the signed-in
+ * user — all computed from existing tables with no schema changes.
+ *
+ * Level formula: floor(lifetimeEarned / 200) + 1
+ * Streak: consecutive UTC days with at least one verified check-in
+ * Badges: rule-based from check-in count + streak
+ * ───────────────────────────────────────────────────────────────────────── */
+router.get("/profile", requireAuth, async (req: Request, res: Response) => {
+  const { userId } = req as AuthedRequest;
+
+  const [walletRows, checkinRows, collectibles, progressRows] = await Promise.all([
+    db
+      .select({ balance: kultroinWalletsTable.balance, lifetimeEarned: kultroinWalletsTable.lifetimeEarned })
+      .from(kultroinWalletsTable)
+      .where(eq(kultroinWalletsTable.userId, userId))
+      .limit(1),
+    db
+      .select({ createdAt: eventCheckinsTable.createdAt })
+      .from(eventCheckinsTable)
+      .where(eq(eventCheckinsTable.userId, userId))
+      .orderBy(desc(eventCheckinsTable.createdAt)),
+    db
+      .select({ slug: collectibleInventoryTable.slug, name: collectibleInventoryTable.name, rarity: collectibleInventoryTable.rarity, imageKey: collectibleInventoryTable.imageKey })
+      .from(collectibleInventoryTable)
+      .where(eq(collectibleInventoryTable.userId, userId)),
+    db
+      .select({ completed: userQuestProgressTable.completed })
+      .from(userQuestProgressTable)
+      .where(and(eq(userQuestProgressTable.userId, userId), eq(userQuestProgressTable.completed, true))),
+  ]);
+
+  const lifetimeEarned = walletRows[0]?.lifetimeEarned ?? 0;
+  const balance = walletRows[0]?.balance ?? 0;
+  const XP_PER_LEVEL = 200;
+  const level = Math.floor(lifetimeEarned / XP_PER_LEVEL) + 1;
+  const xp = lifetimeEarned % XP_PER_LEVEL;
+
+  // Unique UTC date strings (YYYY-MM-DD) for every day with a check-in.
+  const dateSet = new Set<string>();
+  for (const { createdAt } of checkinRows) {
+    dateSet.add(createdAt.toISOString().slice(0, 10));
+  }
+  const uniqueDates = [...dateSet].sort().reverse(); // newest first
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+
+  // Current streak: consecutive days ending today or yesterday.
+  let currentStreak = 0;
+  for (let i = 0; i < uniqueDates.length; i++) {
+    if (i === 0) {
+      if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) break;
+      currentStreak = 1;
+    } else {
+      const prev = new Date(uniqueDates[i - 1] + "T12:00:00Z");
+      const curr = new Date(uniqueDates[i] + "T12:00:00Z");
+      const diffDays = Math.round((prev.getTime() - curr.getTime()) / 86_400_000);
+      if (diffDays === 1) currentStreak++;
+      else break;
+    }
+  }
+
+  // Best streak: maximum consecutive-day run across all history.
+  let bestStreak = currentStreak;
+  let run = 0;
+  for (let i = 0; i < uniqueDates.length; i++) {
+    if (i === 0) { run = 1; continue; }
+    const prev = new Date(uniqueDates[i - 1] + "T12:00:00Z");
+    const curr = new Date(uniqueDates[i] + "T12:00:00Z");
+    const diffDays = Math.round((prev.getTime() - curr.getTime()) / 86_400_000);
+    run = diffDays === 1 ? run + 1 : 1;
+    bestStreak = Math.max(bestStreak, run);
+  }
+
+  const totalCheckins = checkinRows.length;
+  const questsCompleted = progressRows.length;
+
+  const badges = [
+    { id: "week_warrior", name: "Week Warrior", description: "7-Day Streak", earned: currentStreak >= 7 },
+    { id: "consistent", name: "Consistent", description: "3 Events in a Row", earned: totalCheckins >= 3 },
+    { id: "event_king", name: "Event King", description: "10+ Events", earned: totalCheckins >= 10 },
+    { id: "community_builder", name: "Community Builder", description: "5 Events Attended", earned: totalCheckins >= 5 },
+  ];
+
+  // Last 7 calendar days (oldest → newest) for the streak heatmap.
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86_400_000).toISOString().slice(0, 10);
+    return { date: d, checked: dateSet.has(d) };
+  });
+
+  res.json({
+    level,
+    xp,
+    xpToNextLevel: XP_PER_LEVEL,
+    lifetimeEarned,
+    balance,
+    totalCheckins,
+    questsCompleted,
+    currentStreak,
+    bestStreak,
+    last7Days,
+    badges,
+    collectibles,
+  });
+});
+
 /* ── GET /wallet/ledger ───────────────────────────────────────────────────
  * Verifiable, hash-chained ledger history for the signed-in user.
  * ───────────────────────────────────────────────────────────────────────── */

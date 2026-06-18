@@ -75,6 +75,8 @@ function RootLayoutNav() {
       <Stack.Screen name="legal/terms" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="privacy-data" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="settings" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="gamification" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="tribe-leaders" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }

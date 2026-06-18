@@ -353,6 +353,33 @@ export interface LedgerResponse {
   entries: LedgerEntry[];
 }
 
+export interface StreakDay {
+  date: string;
+  checked: boolean;
+}
+
+export interface BadgeView {
+  id: string;
+  name: string;
+  description: string;
+  earned: boolean;
+}
+
+export interface GamificationProfile {
+  level: number;
+  xp: number;
+  xpToNextLevel: number;
+  lifetimeEarned: number;
+  balance: number;
+  totalCheckins: number;
+  questsCompleted: number;
+  currentStreak: number;
+  bestStreak: number;
+  last7Days: StreakDay[];
+  badges: BadgeView[];
+  collectibles: CollectibleView[];
+}
+
 export interface PassActivateRequest {
   multiplier?: string;
 }

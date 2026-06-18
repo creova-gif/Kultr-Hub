@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CheckinCelebration } from "@/components/CheckinCelebration";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useEventCatalog } from "@/hooks/useEventCatalog";
@@ -36,6 +37,12 @@ export default function QuestsScreen() {
   const { data, isLoading, isError } = useQuestProgress();
   const checkIn = useCheckIn();
   const [tab, setTab] = useState<QuestTab>("all");
+  const [celebration, setCelebration] = useState<{
+    visible: boolean;
+    eventTitle: string;
+    eventVenue: string;
+    pointsEarned: number;
+  }>({ visible: false, eventTitle: "", eventVenue: "", pointsEarned: 0 });
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -62,6 +69,8 @@ export default function QuestsScreen() {
 
   const handleCheckIn = (eventId: string, title: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const ev = getEventById(eventId);
+    const venue = ev?.venue ?? "";
     checkIn.mutate(eventId, {
       onSuccess: (res) => {
         if (res.alreadyCheckedIn) {
@@ -69,11 +78,10 @@ export default function QuestsScreen() {
           return;
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        const lines: string[] = [];
-        if (res.pointsEarned > 0) lines.push(`+${res.pointsEarned} KULTROINS`);
-        if (res.questsCompleted.length) lines.push(`Completed: ${res.questsCompleted.map((q) => q.name).join(", ")}`);
-        if (res.legendAwarded) lines.push("🏆 Kultr Legend unlocked!");
-        Alert.alert("Checked in!", lines.join("\n") || `Welcome to ${title}.`);
+        if (res.legendAwarded) {
+          Alert.alert("🏆 Kultr Legend unlocked!", "You've completed all quests!");
+        }
+        setCelebration({ visible: true, eventTitle: title, eventVenue: venue, pointsEarned: res.pointsEarned });
       },
       onError: (e) => Alert.alert("Check-in failed", e instanceof Error ? e.message : "Please try again."),
     });
@@ -81,6 +89,13 @@ export default function QuestsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <CheckinCelebration
+        visible={celebration.visible}
+        eventTitle={celebration.eventTitle}
+        eventVenue={celebration.eventVenue}
+        pointsEarned={celebration.pointsEarned}
+        onDismiss={() => setCelebration((s) => ({ ...s, visible: false }))}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad + 40 }}

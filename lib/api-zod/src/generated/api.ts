@@ -441,6 +441,44 @@ export const GetQuestProgressResponse = zod.object({
 });
 
 /**
+ * @summary Level, XP, streaks and badge summary for the signed-in user
+ */
+export const GetGamificationProfileResponse = zod.object({
+  level: zod.number(),
+  xp: zod.number(),
+  xpToNextLevel: zod.number(),
+  lifetimeEarned: zod.number(),
+  balance: zod.number(),
+  totalCheckins: zod.number(),
+  questsCompleted: zod.number(),
+  currentStreak: zod.number(),
+  bestStreak: zod.number(),
+  last7Days: zod.array(
+    zod.object({
+      date: zod.string(),
+      checked: zod.boolean(),
+    }),
+  ),
+  badges: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      earned: zod.boolean(),
+    }),
+  ),
+  collectibles: zod.array(
+    zod.object({
+      slug: zod.string(),
+      name: zod.string(),
+      rarity: zod.enum(["common", "rare", "epic", "legendary"]),
+      imageKey: zod.string().nullish(),
+      earnedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
  * @summary Verify event attendance and advance quests
  */
 export const VerifyCheckinBody = zod.object({

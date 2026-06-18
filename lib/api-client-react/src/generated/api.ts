@@ -26,6 +26,7 @@ import type {
   EventDetail,
   EventListResponse,
   FxRates,
+  GamificationProfile,
   GetFxRatesParams,
   HealthStatus,
   LedgerResponse,
@@ -1595,6 +1596,82 @@ export function useGetQuestProgress<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetQuestProgressQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Level, XP, streaks and badge summary for the signed-in user
+ */
+export const getGetGamificationProfileUrl = () => {
+  return `/api/gamification/profile`;
+};
+
+export const getGamificationProfile = async (
+  options?: RequestInit,
+): Promise<GamificationProfile> => {
+  return customFetch<GamificationProfile>(getGetGamificationProfileUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGamificationProfileQueryKey = () => {
+  return [`/api/gamification/profile`] as const;
+};
+
+export const getGetGamificationProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGamificationProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGamificationProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetGamificationProfileQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getGamificationProfile>>
+  > = ({ signal }) => getGamificationProfile({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGamificationProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGamificationProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGamificationProfile>>
+>;
+export type GetGamificationProfileQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Level, XP, streaks and badge summary for the signed-in user
+ */
+
+export function useGetGamificationProfile<
+  TData = Awaited<ReturnType<typeof getGamificationProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGamificationProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGamificationProfileQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

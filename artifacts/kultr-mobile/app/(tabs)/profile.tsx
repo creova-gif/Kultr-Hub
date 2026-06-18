@@ -17,6 +17,8 @@ import { useColors } from "@/hooks/useColors";
 
 const MENU_ITEMS = [
   { icon: "compass", label: "Cultural Quests", route: "/quests" },
+  { icon: "activity", label: "Streaks & Badges", route: "/gamification" },
+  { icon: "flag", label: "Tribe Leaders Program", route: "/tribe-leaders" },
   { icon: "gift", label: "Rewards", route: "/rewards" },
   { icon: "heart", label: "Saved Events", route: "/saved" },
   { icon: "tag", label: "My Tickets", route: "/(tabs)/tickets" },

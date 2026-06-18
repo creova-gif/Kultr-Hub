@@ -7,6 +7,7 @@
  */
 
 export * from "./authResponse";
+export * from "./badgeView";
 export * from "./checkinRequest";
 export * from "./checkinResult";
 export * from "./collectibleRarity";
@@ -23,6 +24,7 @@ export * from "./eventSummary";
 export * from "./fxRates";
 export * from "./fxRatesRates";
 export * from "./fxRatesSource";
+export * from "./gamificationProfile";
 export * from "./getFxRatesParams";
 export * from "./grantedCollectible";
 export * from "./healthStatus";
@@ -44,6 +46,7 @@ export * from "./questCompletion";
 export * from "./questProgress";
 export * from "./questView";
 export * from "./signupRequest";
+export * from "./streakDay";
 export * from "./ticketDetail";
 export * from "./ticketListResponse";
 export * from "./ticketTypeSummary";
