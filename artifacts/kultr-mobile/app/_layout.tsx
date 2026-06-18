@@ -69,6 +69,8 @@ function RootLayoutNav() {
       <Stack.Screen name="login" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="creator-studio" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="culture-compass" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="quests" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="rewards" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }
