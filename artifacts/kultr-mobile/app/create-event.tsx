@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { type CreatedEvent, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useCreateEvent } from "@workspace/api-client-react";
 
 const LOGO_ICON = require("@/assets/images/logo-icon.png");
 
@@ -32,7 +33,8 @@ const TICKET_TIERS = [
 export default function CreateEventScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addCreatedEvent, userCountry } = useApp();
+  const { addCreatedEvent, userCountry, authToken } = useApp();
+  const { mutateAsync: createEventApi } = useCreateEvent();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 44) : insets.top;
   const botPad = Platform.OS === "web" ? Math.max(insets.bottom, 24) : insets.bottom;
@@ -50,35 +52,79 @@ export default function CreateEventScreen() {
 
   const isValid = title.trim().length > 2 && date.length > 0 && venue.trim().length > 0;
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!isValid) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPublishing(true);
 
-    setTimeout(() => {
-      const price = parseFloat(prices.regular || prices.earlybird || "0") || 0;
-      const newEvent: CreatedEvent = {
-        id: `ce-${Date.now()}`,
-        title: title.trim(),
-        category,
-        date: date.trim(),
-        time: time.trim() || "18:00",
-        venue: venue.trim(),
-        city: city.trim() || userCountry.name,
-        price,
-        currency: userCountry.currencyCode,
-        currencySymbol: userCountry.currencySymbol,
-        description: description.trim(),
-        ticketsSold: 0,
-        revenue: 0,
-        status: "live",
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-      addCreatedEvent(newEvent);
-      setPublishing(false);
-      setPublished(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }, 1600);
+    const eventDate = `${date.trim()}T${time.trim() || "18:00"}:00`;
+    const price = parseFloat(prices.regular || prices.earlybird || "0") || 0;
+
+    // Build the local event for fallback / immediate optimistic state
+    const localEvent: CreatedEvent = {
+      id: `ce-${Date.now()}`,
+      title: title.trim(),
+      category,
+      date: date.trim(),
+      time: time.trim() || "18:00",
+      venue: venue.trim(),
+      city: city.trim() || userCountry.name,
+      price,
+      currency: userCountry.currencyCode,
+      currencySymbol: userCountry.currencySymbol,
+      description: description.trim(),
+      ticketsSold: 0,
+      revenue: 0,
+      status: "live",
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    // Attempt API creation when authenticated
+    if (authToken) {
+      const ticketTypes = TICKET_TIERS
+        .filter((tier) => parseFloat(prices[tier.id as keyof typeof prices] || "0") > 0)
+        .map((tier) => ({
+          name: tier.name,
+          price: parseFloat(prices[tier.id as keyof typeof prices]),
+          currency: userCountry.currencyCode,
+          totalQuantity: 500,
+        }));
+
+      if (ticketTypes.length === 0) {
+        ticketTypes.push({ name: "General", price, currency: userCountry.currencyCode, totalQuantity: 500 });
+      }
+
+      try {
+        await createEventApi({
+          data: {
+            title: title.trim(),
+            description: description.trim(),
+            category: category as any,
+            venue: venue.trim(),
+            city: city.trim() || userCountry.name,
+            country: userCountry.name,
+            countryCode: userCountry.code,
+            eventDate,
+            ticketTypes,
+          },
+        });
+      } catch {
+        // Fall through: add locally so the user isn't blocked
+        addCreatedEvent(localEvent);
+        setPublishing(false);
+        setPublished(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        return;
+      }
+    } else {
+      // Not authenticated — local only (demo mode)
+      await new Promise((r) => setTimeout(r, 1200));
+      addCreatedEvent(localEvent);
+    }
+
+    setPublishing(false);
+    setPublished(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   if (published) {

@@ -18,6 +18,7 @@ import { EventCardCompact } from "@/components/EventCardCompact";
 import { EventCardHero } from "@/components/EventCardHero";
 import { CATEGORIES, EVENTS, EVENT_IMAGES, getDaysUntil } from "@/constants/data";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
 
 const { width } = Dimensions.get("window");
 
@@ -49,18 +50,19 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState("For You");
+  const { events } = useEventCatalog();
 
-  const featured = EVENTS.filter((e) => e.featured);
-  const soonest = EVENTS.filter((e) => getDaysUntil(e.date) >= 0)
+  const featured = events.filter((e) => e.featured);
+  const soonest = events.filter((e) => getDaysUntil(e.date) >= 0)
     .sort((a, b) => getDaysUntil(a.date) - getDaysUntil(b.date));
   const thisWeekend = soonest.filter((e) => getDaysUntil(e.date) <= 60).slice(0, 4);
-  const acrossAfrica = EVENTS.filter((e) => e.city !== "Nairobi").slice(0, 4);
-  const nearNairobi = EVENTS.filter((e) => e.city === "Nairobi").slice(0, 5);
+  const acrossAfrica = events.filter((e) => e.city !== "Nairobi").slice(0, 4);
+  const nearNairobi = events.filter((e) => e.city === "Nairobi").slice(0, 5);
 
   const displayed =
     selectedCategory === "For You"
-      ? EVENTS
-      : EVENTS.filter((e) => e.category === selectedCategory);
+      ? events
+      : events.filter((e) => e.category === selectedCategory);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 

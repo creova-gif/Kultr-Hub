@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -17,12 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { useApp } from "@/context/AppContext";
-import { EVENT_IMAGES, formatDate, formatTime, getEventById } from "@/constants/data";
+import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";
 import {
   convertCurrency,
   type PaymentMethod,
 } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
+import { useEventDetail } from "@/hooks/useEventDetail";
+import { useGetFxRates } from "@workspace/api-client-react";
 
 export default function CheckoutScreen() {
   const { eventId, ticketTypeIndex } = useLocalSearchParams<{
@@ -31,9 +34,8 @@ export default function CheckoutScreen() {
   }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addTicket, userCountry, setUserCountry } = useApp();
-
-  const event = getEventById(eventId ?? "");
+  const { addTicket, userCountry, setUserCountry, authToken } = useApp();
+  const { event } = useEventDetail(eventId);
   const typeIdx = Number(ticketTypeIndex ?? "0");
   const ticketType = event?.ticketTypes[typeIdx] ?? event?.ticketTypes[0];
 
@@ -52,11 +54,20 @@ export default function CheckoutScreen() {
   const eventCurrencyCode = event?.currency ?? "KES";
   const isSameCurrency = eventCurrencyCode === userCountry.currencyCode;
 
+  // Prefer live FX rates from the API; fall back to static table when unavailable.
+  const { data: fxData } = useGetFxRates({ base: userCountry.currencyCode });
+
   const convertedPrice = useMemo(() => {
     if (!ticketType) return 0;
     if (isSameCurrency) return ticketType.price;
+    // Live rate: fxData.rates[eventCurrencyCode] = units of event currency per 1 user currency
+    // So price / rate = user-currency amount
+    const liveRate = fxData?.rates?.[eventCurrencyCode];
+    if (liveRate && liveRate > 0) {
+      return Math.round(ticketType.price / liveRate);
+    }
     return convertCurrency(ticketType.price, eventCurrencyCode, userCountry.code);
-  }, [ticketType, eventCurrencyCode, userCountry.code, isSameCurrency]);
+  }, [ticketType, eventCurrencyCode, userCountry.code, isSameCurrency, fxData]);
 
   const total = convertedPrice * quantity;
   const fee = Math.round(total * 0.05);
@@ -84,9 +95,122 @@ export default function CheckoutScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setLoading(false);
 
+    const apiBase = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
+    const authHeader = { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` };
+
+    try {
+      if (authToken) {
+        // M-Pesa STK Push path for mobile_money payments
+        if (activeMethod?.type === "mobile_money") {
+          const stkRes = await fetch(`${apiBase}/api/payments/mpesa/stk-push`, {
+            method: "POST",
+            headers: authHeader,
+            body: JSON.stringify({ eventId: event.id, ticketTypeId: ticketType.id, quantity, phone }),
+          });
+
+          if (stkRes.ok) {
+            const stkData = await stkRes.json() as {
+              checkoutRequestId: string;
+              reference: string;
+              simulated: boolean;
+            };
+
+            // Wait for user to enter PIN (or instant for simulated)
+            if (!stkData.simulated) {
+              await new Promise((r) => setTimeout(r, 5000));
+            }
+
+            const verifyRes = await fetch(`${apiBase}/api/payments/mpesa/verify`, {
+              method: "POST",
+              headers: authHeader,
+              body: JSON.stringify({
+                checkoutRequestId: stkData.checkoutRequestId,
+                reference: stkData.reference,
+                simulated: stkData.simulated,
+                eventId: event.id,
+                ticketTypeId: ticketType.id,
+                quantity,
+              }),
+            });
+
+            if (verifyRes.ok) {
+              const verifyData = await verifyRes.json() as { ticketId: string; ticketNumber: string };
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setLoading(false);
+              router.replace(`/ticket/${verifyData.ticketId}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${verifyData.ticketNumber}`);
+              return;
+            }
+          }
+        } else {
+          // Paystack path for card / bank / ussd
+          const initRes = await fetch(`${apiBase}/api/payments/init`, {
+            method: "POST",
+            headers: authHeader,
+            body: JSON.stringify({ eventId: event.id, ticketTypeId: ticketType.id, quantity }),
+          });
+
+          if (initRes.ok) {
+            const initData = await initRes.json() as {
+              reference: string;
+              authorizationUrl: string | null;
+              simulated: boolean;
+              totalAmount: number;
+              currency: string;
+            };
+
+            if (initData.authorizationUrl) {
+              const browserResult = await WebBrowser.openBrowserAsync(initData.authorizationUrl);
+              if (browserResult.type !== "opened" && browserResult.type !== "cancel") {
+                const verifyRes = await fetch(`${apiBase}/api/payments/verify`, {
+                  method: "POST",
+                  headers: authHeader,
+                  body: JSON.stringify({
+                    reference: initData.reference,
+                    eventId: event.id,
+                    ticketTypeId: ticketType.id,
+                    quantity,
+                  }),
+                });
+
+                if (verifyRes.ok) {
+                  const verifyData = await verifyRes.json() as { ticketId: string; ticketNumber: string };
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  setLoading(false);
+                  router.replace(`/ticket/${verifyData.ticketId}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${verifyData.ticketNumber}`);
+                  return;
+                }
+              }
+            } else if (initData.simulated) {
+              const verifyRes = await fetch(`${apiBase}/api/payments/verify`, {
+                method: "POST",
+                headers: authHeader,
+                body: JSON.stringify({
+                  reference: initData.reference,
+                  simulated: true,
+                  eventId: event.id,
+                  ticketTypeId: ticketType.id,
+                  quantity,
+                }),
+              });
+
+              if (verifyRes.ok) {
+                const verifyData = await verifyRes.json() as { ticketId: string; ticketNumber: string };
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setLoading(false);
+                router.replace(`/ticket/${verifyData.ticketId}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${verifyData.ticketNumber}`);
+                return;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Fall through to demo mode
+    }
+
+    // Demo fallback: create ticket locally (used when API is unavailable or user is not authenticated)
+    await new Promise((r) => setTimeout(r, 1200));
     const newTicket = {
       id: `ticket-${Date.now()}`,
       eventId: event.id,
@@ -101,6 +225,7 @@ export default function CheckoutScreen() {
     };
     addTicket(newTicket);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setLoading(false);
     router.replace(
       `/ticket/${newTicket.id}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${newTicket.ticketNumber}`
     );

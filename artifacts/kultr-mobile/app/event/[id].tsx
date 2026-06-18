@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -21,10 +21,10 @@ import {
   EVENT_IMAGES,
   formatDate,
   formatTime,
-  getEventById,
-  getRelatedEvents,
 } from "@/constants/data";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
+import { useEventDetail } from "@/hooks/useEventDetail";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,8 +32,18 @@ export default function EventDetailScreen() {
   const insets = useSafeAreaInsets();
   const { isSaved, toggleSaved } = useApp();
   const [selectedTicketType, setSelectedTicketType] = useState(0);
+  const { event } = useEventDetail(id);
+  const { events } = useEventCatalog();
 
-  const event = getEventById(id ?? "");
+  const relatedEvents = useMemo(
+    () =>
+      event
+        ? events
+            .filter((e) => e.id !== event.id && (e.category === event.category || e.city === event.city))
+            .slice(0, 4)
+        : [],
+    [event, events],
+  );
 
   if (!event) {
     return (
@@ -48,7 +58,6 @@ export default function EventDetailScreen() {
 
   const saved = isSaved(event.id);
   const image = EVENT_IMAGES[event.imageKey];
-  const relatedEvents = getRelatedEvents(event, 4);
   const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
 
   return (

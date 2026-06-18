@@ -2,14 +2,23 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Kultr Hub API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: events
+    description: Event discovery and management
+  - name: tickets
+    description: Ticket purchase and retrieval
+  - name: fx
+    description: Foreign-exchange rates
+
 paths:
   /healthz:
     get:
@@ -24,7 +33,359 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── AUTH ──────────────────────────────────────────────────────────────────
+  /auth/signup:
+    post:
+      operationId: authSignup
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: authLogin
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/otp/request:
+    post:
+      operationId: authOtpRequest
+      tags: [auth]
+      summary: Request a one-time passcode by SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpRequest"
+      responses:
+        "200":
+          description: Code sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpRequestResponse"
+        "400":
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/otp/verify:
+    post:
+      operationId: authOtpVerify
+      tags: [auth]
+      summary: Verify a one-time passcode and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid or expired code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: authLogout
+      tags: [auth]
+      summary: Logout current user
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: authMe
+      tags: [auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── EVENTS ────────────────────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List events with optional filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: countryCode
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventListResponse"
+
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a new event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+
+  /events/creator/me:
+    get:
+      operationId: listMyEvents
+      tags: [events]
+      summary: List events created by the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Creator events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventListResponse"
+
+  /events/creator/analytics:
+    get:
+      operationId: getCreatorAnalytics
+      tags: [events]
+      summary: Get sales analytics for the creator's events
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Creator analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatorAnalytics"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get a single event by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "404":
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── TICKETS ───────────────────────────────────────────────────────────────
+  /tickets:
+    get:
+      operationId: listMyTickets
+      tags: [tickets]
+      summary: List tickets purchased by the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User tickets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketListResponse"
+
+    post:
+      operationId: purchaseTicket
+      tags: [tickets]
+      summary: Purchase a ticket
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseTicketRequest"
+      responses:
+        "201":
+          description: Ticket purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketDetail"
+        "400":
+          description: Not enough tickets available or bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [tickets]
+      summary: Get a single ticket by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ticket detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketDetail"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── FX ────────────────────────────────────────────────────────────────────
+  /fx/rates:
+    get:
+      operationId: getFxRates
+      tags: [fx]
+      summary: Get exchange rates rebased to a currency
+      parameters:
+        - name: base
+          in: query
+          required: false
+          schema:
+            type: string
+            default: KES
+      responses:
+        "200":
+          description: Exchange rates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxRates"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +395,445 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+      required:
+        - message
+
+    FxRates:
+      type: object
+      properties:
+        base:
+          type: string
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+        source:
+          type: string
+          enum: [live, static]
+        fetchedAt:
+          type: string
+          format: date-time
+      required:
+        - base
+        - rates
+        - source
+        - fetchedAt
+
+    # ── AUTH ────────────────────────────────────────────────────────────────
+    SignupRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+        countryCode:
+          type: string
+          default: KE
+      required:
+        - email
+        - password
+        - displayName
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    OtpRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        countryCode:
+          type: string
+      required:
+        - phone
+
+    OtpRequestResponse:
+      type: object
+      properties:
+        simulated:
+          type: boolean
+        expiresInSeconds:
+          type: integer
+        devCode:
+          type: string
+          description: Only present in simulated mode (no SMS gateway configured).
+      required:
+        - simulated
+        - expiresInSeconds
+
+    OtpVerifyRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        countryCode:
+          type: string
+        code:
+          type: string
+        displayName:
+          type: string
+      required:
+        - phone
+        - code
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+        isCreator:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - displayName
+        - countryCode
+        - isCreator
+        - createdAt
+
+    # ── EVENTS ──────────────────────────────────────────────────────────────
+    TicketTypeSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+        currency:
+          type: string
+        available:
+          type: integer
+      required:
+        - id
+        - name
+        - price
+        - currency
+        - available
+
+    EventSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        category:
+          type: string
+        venue:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        countryCode:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+          nullable: true
+        imageKey:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        minPrice:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+      required:
+        - id
+        - title
+        - category
+        - venue
+        - city
+        - country
+        - countryCode
+        - eventDate
+        - featured
+        - minPrice
+        - currency
+        - status
+
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/EventSummary"
+        - type: object
+          properties:
+            description:
+              type: string
+            capacity:
+              type: integer
+              nullable: true
+            latitude:
+              type: number
+              nullable: true
+            longitude:
+              type: number
+              nullable: true
+            ticketTypes:
+              type: array
+              items:
+                $ref: "#/components/schemas/TicketTypeSummary"
+            creatorId:
+              type: string
+          required:
+            - description
+            - ticketTypes
+            - creatorId
+
+    EventListResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventSummary"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - events
+        - total
+        - limit
+        - offset
+
+    CreateEventRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [Music, Art, Food, Heritage, Comedy, Sports, Nightlife]
+        venue:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        countryCode:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+        capacity:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        ticketTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateTicketTypeRequest"
+      required:
+        - title
+        - description
+        - category
+        - venue
+        - city
+        - country
+        - countryCode
+        - eventDate
+        - ticketTypes
+
+    CreateTicketTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        totalQuantity:
+          type: integer
+      required:
+        - name
+        - price
+        - currency
+        - totalQuantity
+
+    # ── TICKETS ─────────────────────────────────────────────────────────────
+    PurchaseTicketRequest:
+      type: object
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+        - eventId
+        - ticketTypeId
+
+    TicketDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        ticketNumber:
+          type: string
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        ticketTypeName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        purchasedAt:
+          type: string
+          format: date-time
+        event:
+          $ref: "#/components/schemas/EventSummary"
+      required:
+        - id
+        - ticketNumber
+        - eventId
+        - ticketTypeId
+        - ticketTypeName
+        - quantity
+        - unitPrice
+        - totalAmount
+        - currency
+        - status
+        - purchasedAt
+        - event
+
+    TicketListResponse:
+      type: object
+      properties:
+        tickets:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketDetail"
+        total:
+          type: integer
+      required:
+        - tickets
+        - total
+
+    CreatedEventStats:
+      type: object
+      required: [id, title, category, eventDate, venue, city, status, ticketsSold, revenue, currency]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        city:
+          type: string
+        status:
+          type: string
+        ticketsSold:
+          type: integer
+        revenue:
+          type: number
+        currency:
+          type: string
+
+    CreatorAnalytics:
+      type: object
+      required: [events, totalRevenue, totalTicketsSold, liveEvents]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatedEventStats"
+        totalRevenue:
+          type: number
+        totalTicketsSold:
+          type: integer
+        liveEvents:
+          type: integer

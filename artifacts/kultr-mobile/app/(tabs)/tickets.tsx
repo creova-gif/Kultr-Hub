@@ -13,13 +13,46 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { EVENT_IMAGES, EVENTS, formatDate, formatTime, getEventById } from "@/constants/data";
+import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";
+import { getCountryByCurrency } from "@/constants/currencies";
+import type { PurchasedTicket } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
+import { useListMyTickets, getListMyTicketsQueryKey, type TicketDetail } from "@workspace/api-client-react";
+
+function adaptApiTicket(t: TicketDetail): PurchasedTicket {
+  return {
+    id: t.id,
+    eventId: t.eventId,
+    ticketTypeId: t.ticketTypeId,
+    ticketTypeName: t.ticketTypeName,
+    ticketNumber: t.ticketNumber,
+    purchaseDate: t.purchasedAt.slice(0, 10),
+    quantity: t.quantity,
+    totalPaid: t.totalAmount,
+    currency: t.currency,
+    currencySymbol: getCountryByCurrency(t.currency)?.currencySymbol ?? t.currency,
+  };
+}
 
 export default function TicketsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { tickets } = useApp();
+  const { tickets: localTickets, authToken } = useApp();
+  const { getEventById } = useEventCatalog();
+
+  const { data: apiData } = useListMyTickets({
+    query: { queryKey: getListMyTicketsQueryKey(), enabled: !!authToken },
+  });
+
+  const tickets = React.useMemo<PurchasedTicket[]>(() => {
+    if (!apiData?.tickets?.length) return localTickets;
+    const apiTickets = apiData.tickets.map(adaptApiTicket);
+    const localOnly = localTickets.filter(
+      (lt) => !apiTickets.some((at) => at.id === lt.id)
+    );
+    return [...apiTickets, ...localOnly];
+  }, [apiData, localTickets]);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 

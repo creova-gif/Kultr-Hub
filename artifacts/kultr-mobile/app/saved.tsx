@@ -14,18 +14,20 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { EVENT_IMAGES, EVENTS, formatDate, formatTime } from "@/constants/data";
+import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
 
 export default function SavedEventsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { savedEvents, toggleSaved } = useApp();
+  const { events } = useEventCatalog();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
 
-  const saved = EVENTS.filter((e) => savedEvents.includes(e.id));
+  const saved = events.filter((e) => savedEvents.includes(e.id));
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

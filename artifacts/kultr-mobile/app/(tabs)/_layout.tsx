@@ -17,8 +17,9 @@ import { useColors } from "@/hooks/useColors";
 const { width } = Dimensions.get("window");
 
 const TABS = [
-  { name: "index", label: "Home", icon: "home" },
+  { name: "foryou", label: "For You", icon: "star" },
   { name: "discover", label: "Discover", icon: "compass" },
+  { name: "social", label: "Social", icon: "users" },
   { name: "tickets", label: "Tickets", icon: "tag" },
   { name: "profile", label: "Profile", icon: "user" },
 ] as const;
@@ -57,6 +58,9 @@ function FloatingTabBar({ state, navigation }: FloatingTabBarProps) {
                 }
               }}
               style={styles.tabItem}
+              accessibilityLabel={tab.label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
             >
               {focused ? (
                 <View style={styles.activeContent}>
@@ -65,7 +69,7 @@ function FloatingTabBar({ state, navigation }: FloatingTabBarProps) {
                 </View>
               ) : (
                 <View style={styles.inactiveContent}>
-                  <Feather name={tab.icon} size={22} color="#555" />
+                  <Feather name={tab.icon} size={22} color="#888" />
                 </View>
               )}
             </Pressable>
@@ -82,8 +86,10 @@ export default function TabLayout() {
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="index" options={{ title: "Home", href: null }} />
+      <Tabs.Screen name="foryou" options={{ title: "For You" }} />
       <Tabs.Screen name="discover" options={{ title: "Discover" }} />
+      <Tabs.Screen name="social" options={{ title: "Social" }} />
       <Tabs.Screen name="tickets" options={{ title: "Tickets" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>

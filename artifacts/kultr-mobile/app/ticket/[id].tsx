@@ -17,8 +17,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { QRDisplay } from "@/components/QRDisplay";
 import { useApp } from "@/context/AppContext";
 
-import { formatDate, formatTime, getEventById } from "@/constants/data";
+import { formatDate, formatTime } from "@/constants/data";
 import { useColors } from "@/hooks/useColors";
+import { useEventCatalog } from "@/hooks/useEventCatalog";
 
 const LOGO_WORDMARK = require("@/assets/images/logo-wordmark.png");
 
@@ -33,6 +34,7 @@ export default function TicketViewScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { tickets } = useApp();
+  const { getEventById } = useEventCatalog();
 
   const ticket = tickets.find((t) => t.id === id);
   const resolvedEventId = ticket?.eventId ?? eventId ?? "";
