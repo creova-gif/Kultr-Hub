@@ -27,6 +27,22 @@ const RARITY_COLOR: Record<string, string> = {
   legendary: "#FFB400",
 };
 
+function questAccentColor(questName: string): string {
+  if (/art|exhib|gallery/i.test(questName)) return "#7B61FF";
+  if (/music|concert|live/i.test(questName)) return "#FF6B00";
+  if (/food|culinary|dish|taste/i.test(questName)) return "#FFA726";
+  if (/heritage|histor|landmark|museum/i.test(questName)) return "#00C853";
+  return "#FF6B00";
+}
+
+function questEmoji(questName: string): string {
+  if (/art|exhib|gallery/i.test(questName)) return "🎨";
+  if (/music|concert|live/i.test(questName)) return "🎵";
+  if (/food|culinary|dish|taste/i.test(questName)) return "🍽️";
+  if (/heritage|histor|landmark|museum/i.test(questName)) return "🏛️";
+  return "⭐";
+}
+
 type QuestTab = "all" | "progress" | "completed";
 
 export default function QuestsScreen() {
@@ -225,45 +241,67 @@ export default function QuestsScreen() {
                   {tab === "completed" ? "No completed quests yet." : "Nothing here right now."}
                 </Text>
               ) : (
-                filteredQuests.map((q) => (
-                  <View
-                    key={q.id}
-                    style={[styles.questCard, { backgroundColor: colors.card, borderColor: q.completed ? "#00C853" + "55" : colors.border }]}
-                  >
-                    <View style={styles.questTop}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.questName, { color: colors.foreground }]}>{q.name}</Text>
-                        <Text style={[styles.questDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
-                          {q.description}
-                        </Text>
-                      </View>
-                      <View style={[styles.pointsBadge, { backgroundColor: colors.muted }]}>
-                        <Feather name="star" size={11} color="#FFB400" />
-                        <Text style={[styles.pointsText, { color: colors.foreground }]}>{q.points}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.questBottom}>
-                      <View style={[styles.progressTrack, { backgroundColor: colors.muted, flex: 1 }]}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            { width: `${q.percent}%`, backgroundColor: q.completed ? "#00C853" : "#FF6B00" },
-                          ]}
-                        />
-                      </View>
-                      {q.completed ? (
-                        <View style={styles.doneRow}>
-                          <Feather name="check-circle" size={14} color="#00C853" />
-                          <Text style={[styles.doneText, { color: "#00C853" }]}>Done</Text>
+                filteredQuests.map((q) => {
+                  const accentColor = questAccentColor(q.name);
+                  const emoji = questEmoji(q.name);
+                  return (
+                    <View
+                      key={q.id}
+                      style={[
+                        styles.questCard,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: q.completed ? "#00C853" + "55" : colors.border,
+                          flexDirection: "row",
+                          padding: 0,
+                          overflow: "hidden",
+                        },
+                      ]}
+                    >
+                      {/* Category accent bar */}
+                      <View
+                        style={[styles.questAccentBar, { backgroundColor: accentColor }]}
+                      />
+                      {/* Quest content */}
+                      <View style={{ flex: 1, padding: 14 }}>
+                        {/* Emoji badge */}
+                        <Text style={styles.questEmojiBadge}>{emoji}</Text>
+                        <View style={styles.questTop}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.questName, { color: colors.foreground }]}>{q.name}</Text>
+                            <Text style={[styles.questDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
+                              {q.description}
+                            </Text>
+                          </View>
+                          <View style={[styles.pointsBadge, { backgroundColor: colors.muted }]}>
+                            <Feather name="star" size={11} color="#FFB400" />
+                            <Text style={[styles.pointsText, { color: colors.foreground }]}>{q.points}</Text>
+                          </View>
                         </View>
-                      ) : (
-                        <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
-                          {q.progress}/{q.target}
-                        </Text>
-                      )}
+                        <View style={styles.questBottom}>
+                          <View style={[styles.progressTrack, { backgroundColor: colors.muted, flex: 1 }]}>
+                            <View
+                              style={[
+                                styles.progressFill,
+                                { width: `${q.percent}%`, backgroundColor: q.completed ? "#00C853" : accentColor },
+                              ]}
+                            />
+                          </View>
+                          {q.completed ? (
+                            <View style={styles.doneRow}>
+                              <Feather name="check-circle" size={14} color="#00C853" />
+                              <Text style={[styles.doneText, { color: "#00C853" }]}>Done</Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
+                              {q.progress}/{q.target}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
 
@@ -387,8 +425,15 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, marginBottom: 20, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700" },
 
-  questCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12 },
-  questTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  questCard: { borderRadius: 14, borderWidth: 1, gap: 12 },
+  questAccentBar: { width: 4, borderRadius: 2, alignSelf: "stretch" },
+  questEmojiBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    fontSize: 18,
+  },
+  questTop: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingRight: 28 },
   questName: { fontSize: 15, fontWeight: "800", marginBottom: 3 },
   questDesc: { fontSize: 12, lineHeight: 17 },
   pointsBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },

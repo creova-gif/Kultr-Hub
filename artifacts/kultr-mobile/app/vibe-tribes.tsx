@@ -3,11 +3,13 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +38,8 @@ const TRIBES: Tribe[] = [
   { id: "dance", name: "Step & Sway", emoji: "💃", tagline: "If it moves you, it's home.", members: 4988, color: "#FF4081", category: "Dance" },
 ];
 
+const AVATAR_COLORS = ["#FF6B00", "#7B61FF", "#00C853", "#E1306C", "#4F9DFF", "#FFB400"];
+
 function formatMembers(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return `${n}`;
@@ -46,6 +50,7 @@ export default function VibeTribesScreen() {
   const insets = useSafeAreaInsets();
   const { authToken } = useApp();
   const [joined, setJoined] = useState<string[]>(["afrobeats"]);
+  const [query, setQuery] = useState("");
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -60,14 +65,27 @@ export default function VibeTribesScreen() {
   };
 
   const { myTribes, discoverTribes } = useMemo(() => {
+    const filtered = query.trim()
+      ? TRIBES.filter(
+          (t) =>
+            t.name.toLowerCase().includes(query.toLowerCase()) ||
+            t.category.toLowerCase().includes(query.toLowerCase())
+        )
+      : TRIBES;
     return {
-      myTribes: TRIBES.filter((t) => joined.includes(t.id)),
-      discoverTribes: TRIBES.filter((t) => !joined.includes(t.id)),
+      myTribes: filtered.filter((t) => joined.includes(t.id)),
+      discoverTribes: filtered.filter((t) => !joined.includes(t.id)),
     };
-  }, [joined]);
+  }, [joined, query]);
 
   const renderTribe = (tribe: Tribe) => {
     const isJoined = joined.includes(tribe.id);
+    const seed = tribe.id.charCodeAt(0) % 6;
+    const avatarColors = [
+      AVATAR_COLORS[seed],
+      AVATAR_COLORS[(seed + 1) % 6],
+      AVATAR_COLORS[(seed + 2) % 6],
+    ];
     return (
       <View
         key={tribe.id}
@@ -89,6 +107,18 @@ export default function VibeTribesScreen() {
             <Text style={[styles.tribeCategory, { color: colors.mutedForeground }]}>
               · {tribe.category}
             </Text>
+          </View>
+          {/* Member avatar stack */}
+          <View style={styles.avatarStack}>
+            {avatarColors.map((color, idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.avatarCircle,
+                  { backgroundColor: color, marginLeft: idx === 0 ? 0 : -6 },
+                ]}
+              />
+            ))}
           </View>
         </View>
         <Pressable
@@ -138,6 +168,18 @@ export default function VibeTribesScreen() {
           Find your people. Move with the culture.
         </Text>
 
+        {/* Search bar */}
+        <View style={styles.searchContainer}>
+          <Feather name="search" size={16} color="#FF6B00" style={styles.searchIcon} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search tribes..."
+            placeholderTextColor="#666"
+            style={styles.searchInput}
+          />
+        </View>
+
         {/* My Tribes */}
         {myTribes.length > 0 && (
           <View style={styles.section}>
@@ -159,6 +201,17 @@ export default function VibeTribesScreen() {
             discoverTribes.map(renderTribe)
           )}
         </View>
+
+        {/* Create Your Tribe CTA */}
+        <Pressable
+          style={styles.createTribeBtn}
+          onPress={() =>
+            Alert.alert("Create a Tribe", "Tribe creation is coming soon. Stay tuned!")
+          }
+        >
+          <Feather name="plus-circle" size={18} color="#FF6B00" />
+          <Text style={styles.createTribeBtnText}>Create Your Tribe</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -175,6 +228,25 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "800", flex: 1, textAlign: "center", marginHorizontal: 8 },
   subtitle: { fontSize: 13, paddingHorizontal: 16, marginTop: 4, marginBottom: 20, textAlign: "center" },
+
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    marginHorizontal: 16,
+    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#fff",
+  },
 
   section: { paddingHorizontal: 16, marginBottom: 24, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700" },
@@ -203,6 +275,38 @@ const styles = StyleSheet.create({
   tribeMetaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tribeMembers: { fontSize: 11, fontWeight: "700" },
   tribeCategory: { fontSize: 11 },
+  avatarStack: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  avatarCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#0E0E0E",
+  },
+
+  createTribeBtn: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderStyle: "dashed",
+    borderColor: "#FF6B00",
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  createTribeBtnText: {
+    color: "#FF6B00",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+
   joinBtn: {
     flexDirection: "row",
     alignItems: "center",

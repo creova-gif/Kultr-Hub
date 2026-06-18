@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -36,6 +37,20 @@ const BADGE_ICONS: Record<string, string> = {
   event_king: "award",
   community_builder: "users",
 };
+
+const BADGE_META: Record<string, { label: string; description: string }> = {
+  week_warrior: { label: "Week Warrior", description: "7-day check-in streak" },
+  consistent: { label: "Consistent", description: "2 events in a row" },
+  event_king: { label: "Event King", description: "Attended 10+ events" },
+  community_builder: { label: "Community Builder", description: "Attended 5+ events" },
+};
+
+const LEVELS = [
+  { title: "Newbie", visits: 0, icon: "star" },
+  { title: "Explorer", visits: 10, icon: "compass" },
+  { title: "Culturalist", visits: 25, icon: "globe" },
+  { title: "Global Icon", visits: 50, icon: "award" },
+] as const;
 
 export default function GamificationScreen() {
   const colors = useColors();
@@ -67,6 +82,9 @@ export default function GamificationScreen() {
   const bestStreak = data?.bestStreak ?? 0;
   const badges = data?.badges ?? [];
   const last7Days = data?.last7Days ?? [];
+  const totalCheckins = (data as any)?.totalCheckins ?? 0;
+  const currentLevelIndex =
+    totalCheckins >= 50 ? 3 : totalCheckins >= 25 ? 2 : totalCheckins >= 10 ? 1 : 0;
 
   return (
     <ScrollView
@@ -137,6 +155,60 @@ export default function GamificationScreen() {
               <Feather name="user" size={13} color={colors.foreground} />
               <Text style={[styles.viewProfileText, { color: colors.foreground }]}>View Profile</Text>
             </Pressable>
+          </View>
+
+          {/* Level Journey */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Level Journey</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 0, flexDirection: "row", alignItems: "center" }}
+            >
+              {LEVELS.map((lvl, idx) => {
+                const isPast = idx <= currentLevelIndex;
+                const isCurrent = idx === currentLevelIndex;
+                return (
+                  <React.Fragment key={lvl.title}>
+                    <View style={{ alignItems: "center", width: 72 }}>
+                      {isCurrent && (
+                        <Text style={styles.youAreHere}>YOU ARE HERE</Text>
+                      )}
+                      <View
+                        style={[
+                          styles.levelCircle,
+                          isPast
+                            ? { backgroundColor: "#FF6B00" }
+                            : { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#333" },
+                        ]}
+                      >
+                        <Feather
+                          name={lvl.icon as any}
+                          size={20}
+                          color={isPast ? "#fff" : "#555"}
+                        />
+                      </View>
+                      <Text style={[styles.levelNodeTitle, { color: isPast ? colors.foreground : "#555" }]}>
+                        {lvl.title}
+                      </Text>
+                      <Text style={[styles.levelNodeVisits, { color: colors.mutedForeground }]}>
+                        {lvl.visits === 0 ? "Start" : `${lvl.visits} visits`}
+                      </Text>
+                    </View>
+                    {idx < LEVELS.length - 1 && (
+                      <View
+                        style={[
+                          styles.levelConnector,
+                          { backgroundColor: idx < currentLevelIndex ? "#FF6B00" : "#2A2A2A" },
+                        ]}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Kultr Streaks */}
@@ -257,9 +329,11 @@ export default function GamificationScreen() {
                       <Feather name={icon} size={24} color={badge.earned ? "#FF6B00" : colors.mutedForeground} />
                     </View>
                     <Text style={[styles.badgeName, { color: colors.foreground }]} numberOfLines={2}>
-                      {badge.name}
+                      {BADGE_META[badge.id]?.label ?? badge.name}
                     </Text>
-                    <Text style={[styles.badgeDesc, { color: colors.mutedForeground }]}>{badge.description}</Text>
+                    <Text style={[styles.badgeDesc, { color: colors.mutedForeground }]}>
+                      {BADGE_META[badge.id]?.description ?? badge.description}
+                    </Text>
                   </View>
                 );
               })}
@@ -398,6 +472,37 @@ const styles = StyleSheet.create({
   streakStatLabel: { fontSize: 11 },
   streakStatValue: { fontSize: 18, fontWeight: "900" },
   streakStatDivider: { width: 1, marginHorizontal: 8 },
+
+  youAreHere: {
+    fontSize: 8,
+    fontWeight: "800",
+    color: "#FF6B00",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  levelCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  levelNodeTitle: {
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  levelNodeVisits: {
+    fontSize: 9,
+    textAlign: "center",
+  },
+  levelConnector: {
+    width: 24,
+    height: 2,
+    marginBottom: 20,
+  },
 
   badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   badgeTile: {

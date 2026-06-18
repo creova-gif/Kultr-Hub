@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -159,6 +160,42 @@ export default function LoginScreen() {
               <Text style={[styles.sub, { color: colors.mutedForeground }]}>
                 We'll send a verification code via SMS.
               </Text>
+
+              {/* Social sign-in buttons */}
+              <Pressable
+                style={[styles.socialBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                onPress={() =>
+                  Alert.alert(
+                    "Coming Soon",
+                    "Google / Apple sign-in will be available at launch. Please use your phone number for now."
+                  )
+                }
+              >
+                <View style={styles.socialIconWrap}>
+                  <Text style={styles.socialGoogleG}>G</Text>
+                </View>
+                <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Continue with Google</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.socialBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                onPress={() =>
+                  Alert.alert(
+                    "Coming Soon",
+                    "Google / Apple sign-in will be available at launch. Please use your phone number for now."
+                  )
+                }
+              >
+                <Feather name="smartphone" size={18} color={colors.foreground} />
+                <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Continue with Apple</Text>
+              </Pressable>
+
+              {/* Divider */}
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or continue with phone</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
 
               {/* Country selector */}
               <Pressable
@@ -466,6 +503,45 @@ const styles = StyleSheet.create({
 
   resendBtn: { alignItems: "center", paddingVertical: 6 },
   resendText: { fontSize: 14 },
+
+  socialBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  socialIconWrap: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  socialGoogleG: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#4285F4",
+  },
+  socialBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
 
   devBanner: {
     flexDirection: "row",

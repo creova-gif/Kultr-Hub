@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -48,6 +49,7 @@ export default function CreateEventScreen() {
   const [city, setCity] = useState("");
   const [description, setDescription] = useState("");
   const [prices, setPrices] = useState({ earlybird: "", regular: "", vip: "" });
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
 
@@ -340,16 +342,40 @@ export default function CreateEventScreen() {
           ))}
         </View>
 
-        {/* Media upload hint */}
+        {/* Media upload */}
         <Pressable
-          style={[styles.mediaUpload, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+          style={[styles.mediaUpload, { backgroundColor: colors.card, borderColor: coverImage ? "#FF6B00" : colors.border }]}
+          onPress={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [16, 9],
+              quality: 0.8,
+            });
+            if (!result.canceled) setCoverImage(result.assets[0].uri);
+          }}
         >
-          <Feather name="image" size={24} color={colors.mutedForeground} />
-          <Text style={[styles.mediaUploadTitle, { color: colors.foreground }]}>Add Event Photo</Text>
-          <Text style={[styles.mediaUploadSub, { color: colors.mutedForeground }]}>
-            Tap to upload a cover image or video teaser
-          </Text>
+          {coverImage ? (
+            <>
+              <Image
+                source={{ uri: coverImage }}
+                style={{ width: "100%", height: 180, borderRadius: 12 }}
+                resizeMode="cover"
+              />
+              <Text style={[styles.mediaUploadSub, { color: colors.mutedForeground, marginTop: 8 }]}>
+                Change Photo
+              </Text>
+            </>
+          ) : (
+            <>
+              <Feather name="image" size={24} color={colors.mutedForeground} />
+              <Text style={[styles.mediaUploadTitle, { color: colors.foreground }]}>Add Event Photo</Text>
+              <Text style={[styles.mediaUploadSub, { color: colors.mutedForeground }]}>
+                Tap to upload a cover image or video teaser
+              </Text>
+            </>
+          )}
         </Pressable>
       </ScrollView>
 
