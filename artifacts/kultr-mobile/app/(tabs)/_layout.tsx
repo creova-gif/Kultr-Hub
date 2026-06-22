@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, Tabs } from "expo-router";
 import React from "react";
 import {
+  I18nManager,
   Platform,
   Pressable,
   StyleSheet,
@@ -10,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useApp } from "@/context/AppContext";
 
 const LEFT_TABS = [
   { name: "foryou",   label: "Home",     icon: "home"           },
@@ -29,6 +32,7 @@ type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tab
 
 function TabBar({ state, navigation }: TabBarProps) {
   const insets  = useSafeAreaInsets();
+  const { isRTL } = useApp();
   const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 20) : insets.bottom;
   const activeRoute = state.routes[state.index]?.name;
 
@@ -71,7 +75,7 @@ function TabBar({ state, navigation }: TabBarProps) {
       <View style={styles.topBorder} />
 
       {/* Tab row sits at BAR_HEIGHT; FAB lifts above it */}
-      <View style={[styles.row, { height: BAR_HEIGHT }]}>
+      <View style={[styles.row, { height: BAR_HEIGHT, flexDirection: isRTL ? "row-reverse" : "row" }]}>
         {/* Left side tabs */}
         <View style={styles.side}>
           {LEFT_TABS.map(renderTab)}

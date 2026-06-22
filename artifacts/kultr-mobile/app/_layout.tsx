@@ -10,6 +10,7 @@ import * as Linking from "expo-linking";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { I18nManager } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -50,7 +51,9 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
-  const { onboardingDone } = useApp();
+  const { onboardingDone, isRTL } = useApp();
+
+  I18nManager.allowRTL(true);
 
   React.useEffect(() => {
     if (!onboardingDone) {

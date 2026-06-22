@@ -56,7 +56,18 @@ function getEventDay(dateStr: string): string {
   }
 }
 
-type SocialTab = "all" | "friends" | "invites";
+type SocialTab = "all" | "friends" | "invites" | "activity";
+
+const ACTIVITY_ITEMS = [
+  { id: "a1", user: "Kemi O.", color: "#FF6B00", action: "just bought a ticket to", event: "Nairobi Jazz Collective", time: "2m ago" },
+  { id: "a2", user: "Kwame A.", color: "#7B61FF", action: "saved", event: "Afrobeats NYC", time: "15m ago" },
+  { id: "a3", user: "Zara M.", color: "#00C853", action: "checked in at", event: "Lagos Street Food Festival", time: "1h ago" },
+  { id: "a4", user: "Dami K.", color: "#E91E63", action: "bought a ticket to", event: "Accra Jazz & Blues", time: "2h ago" },
+  { id: "a5", user: "Seun B.", color: "#FFA726", action: "is now following", event: "Kultr Creator: SoundMaster", time: "3h ago" },
+  { id: "a6", user: "Fatima Y.", color: "#00BCD4", action: "reviewed", event: "Nairobi Jazz Collective ⭐⭐⭐⭐⭐", time: "5h ago" },
+  { id: "a7", user: "Ade F.", color: "#FF6B00", action: "invited you to", event: "Kingston Carnival", time: "Yesterday" },
+  { id: "a8", user: "Kofi A.", color: "#4F9DFF", action: "earned 'Kultr Legend' at", event: "Afro Nation Portugal", time: "2 days ago" },
+];
 
 const CATEGORY_TAGS: Record<string, string[]> = {
   Music: ["Live Music", "Afrobeats"],
@@ -91,6 +102,7 @@ export default function SocialScreen() {
     { id: "all", label: "All Events" },
     { id: "friends", label: "Friends" },
     { id: "invites", label: "Invites" },
+    { id: "activity", label: "Activity" },
   ];
 
   return (
@@ -155,8 +167,36 @@ export default function SocialScreen() {
         </Pressable>
       </View>
 
+      {/* ── Activity Feed ── */}
+      {activeTab === "activity" && (
+        <View style={styles.activityFeed}>
+          {ACTIVITY_ITEMS.map((item) => (
+            <Pressable
+              key={item.id}
+              style={[styles.activityItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              accessibilityLabel={`${item.user} ${item.action} ${item.event}`}
+              accessibilityRole="button"
+            >
+              <View style={[styles.activityAvatar, { backgroundColor: item.color }]}>
+                <Text style={styles.activityAvatarText}>{item.user[0]}</Text>
+              </View>
+              <View style={styles.activityBody}>
+                <Text style={[styles.activityText, { color: colors.foreground }]} numberOfLines={2}>
+                  <Text style={{ fontWeight: "700" }}>{item.user}</Text>
+                  {" "}{item.action}{" "}
+                  <Text style={{ color: "#FF6B00", fontWeight: "600" }}>{item.event}</Text>
+                </Text>
+                <Text style={[styles.activityTime, { color: colors.mutedForeground }]}>{item.time}</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {/* ── Event Cards ── */}
-      <View style={styles.cardList}>
+      <View style={[styles.cardList, activeTab === "activity" ? { display: "none" } : {}]}>
         {isLoading && (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color="#FF6B00" />
@@ -499,4 +539,26 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   findFriendsBtnText: { color: "#FF6B00", fontSize: 12, fontWeight: "700" },
+
+  activityFeed: { paddingHorizontal: 16, gap: 10 },
+  activityItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  activityAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  activityAvatarText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  activityBody: { flex: 1 },
+  activityText: { fontSize: 13, lineHeight: 18 },
+  activityTime: { fontSize: 11, marginTop: 2 },
 });

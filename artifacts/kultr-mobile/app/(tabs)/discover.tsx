@@ -22,13 +22,11 @@ import { CATEGORIES } from "@/constants/data";
 import { EA_COUNTRIES } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
 import { useEventCatalog } from "@/hooks/useEventCatalog";
-import { useTranslation } from "@/hooks/useTranslation";
 
 export default function DiscoverScreen() {
   const colors = useColors();
-  const t = useTranslation();
   const insets = useSafeAreaInsets();
-  const { userCountry, setUserCountry } = useApp();
+  const { userCountry, setUserCountry, isRTL } = useApp();
   const [search, setSearch] = useState("");
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("For You");
@@ -78,7 +76,7 @@ export default function DiscoverScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             Culture <Text style={{ color: "#FF6B00" }}>Compass</Text>
           </Text>
@@ -105,7 +103,7 @@ export default function DiscoverScreen() {
         {/* Currency info strip */}
         <View style={[styles.currencyStrip, { backgroundColor: "rgba(255,107,0,0.08)", borderColor: "#FF6B00" + "30" }]}>
           <Feather name="refresh-cw" size={12} color="#FF6B00" />
-          <Text style={[styles.currencyStripText, { color: colors.mutedForeground }]}>
+          <Text style={[styles.currencyStripText, { color: colors.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
             Viewing prices in event local currency · Checkout converts to{" "}
             <Text style={{ color: "#FF6B00", fontWeight: "700" }}>
               {userCountry.currencySymbol} {userCountry.currencyCode}
@@ -114,12 +112,12 @@ export default function DiscoverScreen() {
         </View>
 
         {/* Search Bar */}
-        <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={t.actions.search + " events..."}
+            placeholder="Search events, artists, cities..."
             placeholderTextColor={colors.mutedForeground}
             style={[styles.searchInput, { color: colors.foreground }]}
             returnKeyType="search"
@@ -178,8 +176,8 @@ export default function DiscoverScreen() {
         {/* Cities quick filter */}
         {search.length === 0 && selectedCategory === "For You" && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.discover.byCity}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cityRow}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>Browse by City</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.cityRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               {cities.map((city) => {
                 const country = events.find((e) => e.city === city);
                 return (
@@ -216,7 +214,7 @@ export default function DiscoverScreen() {
                 {userCountry.flag} {userCountry.name} Payment Methods
               </Text>
               <Pressable onPress={() => setShowCountryPicker(true)}>
-                <Text style={[styles.changeLink, { color: "#FF6B00" }]}>{t.actions.change}</Text>
+                <Text style={[styles.changeLink, { color: "#FF6B00" }]}>Change</Text>
               </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paymentRow}>
@@ -265,11 +263,11 @@ export default function DiscoverScreen() {
 
         {/* Results */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: isRTL ? "right" : "left" }]}>
             {search.length > 0
               ? `Results for "${search}"`
               : selectedCategory === "For You"
-              ? t.discover.allEvents
+              ? "All Events"
               : selectedCategory}
             <Text style={[styles.count, { color: colors.mutedForeground }]}>
               {"  "}({filtered.length})
@@ -278,7 +276,7 @@ export default function DiscoverScreen() {
           {filtered.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="search" size={36} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.discover?.noEvents ?? "No events found"}</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No events found</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                 Try a different search or category
               </Text>

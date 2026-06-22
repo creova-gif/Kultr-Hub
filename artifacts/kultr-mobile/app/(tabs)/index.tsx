@@ -39,11 +39,21 @@ const CITY_TO_COUNTRY: Record<string, string> = {
   Accra: "GH",
   Kampala: "UG",
   "Dar es Salaam": "TZ",
+  London: "GB",
+  "New York": "US",
+  Toronto: "CA",
+  Kingston: "JM",
+  "Port of Spain": "TT",
+  Portimão: "PT",
+  Paris: "FR",
+  Bridgetown: "BB",
 };
 
 const COUNTRY_FLAGS: Record<string, string> = {
   KE: "🇰🇪", NG: "🇳🇬", GH: "🇬🇭", UG: "🇺🇬", TZ: "🇹🇿",
   RW: "🇷🇼", ET: "🇪🇹",
+  GB: "🇬🇧", US: "🇺🇸", CA: "🇨🇦", JM: "🇯🇲", TT: "🇹🇹",
+  PT: "🇵🇹", FR: "🇫🇷", BB: "🇧🇧",
 };
 
 export default function HomeScreen() {
@@ -58,6 +68,9 @@ export default function HomeScreen() {
   const thisWeekend = soonest.filter((e) => getDaysUntil(e.date) <= 60).slice(0, 4);
   const acrossAfrica = events.filter((e) => e.city !== "Nairobi").slice(0, 4);
   const nearNairobi = events.filter((e) => e.city === "Nairobi").slice(0, 5);
+  const diaspora = events.filter((e) =>
+    ["United Kingdom", "United States", "Canada", "Jamaica", "Trinidad", "Barbados", "Portugal", "France"].includes(e.country ?? "")
+  ).slice(0, 4);
 
   const displayed =
     selectedCategory === "For You"
@@ -311,6 +324,16 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
+            </View>
+          )}
+
+          {/* ── TRENDING IN THE DIASPORA ── */}
+          {diaspora.length > 0 && (
+            <View style={styles.section}>
+              <SectionTitle label="TRENDING IN THE DIASPORA" accent="✈️ Global" onSeeAll={() => router.push("/(tabs)/discover" as any)} />
+              {diaspora.map((event) => (
+                <EventCardCompact key={event.id} event={event} horizontal />
+              ))}
             </View>
           )}
         </>
