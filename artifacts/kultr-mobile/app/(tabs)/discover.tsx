@@ -21,9 +21,11 @@ import { CATEGORIES } from "@/constants/data";
 import { EA_COUNTRIES } from "@/constants/currencies";
 import { useColors } from "@/hooks/useColors";
 import { useEventCatalog } from "@/hooks/useEventCatalog";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function DiscoverScreen() {
   const colors = useColors();
+  const t = useTranslation();
   const insets = useSafeAreaInsets();
   const { userCountry, setUserCountry } = useApp();
   const [search, setSearch] = useState("");
@@ -99,7 +101,7 @@ export default function DiscoverScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search events, artists, cities..."
+            placeholder={t.actions.search + " events..."}
             placeholderTextColor={colors.mutedForeground}
             style={[styles.searchInput, { color: colors.foreground }]}
             returnKeyType="search"
@@ -124,7 +126,7 @@ export default function DiscoverScreen() {
         {/* Cities quick filter */}
         {search.length === 0 && selectedCategory === "For You" && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Browse by City</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.discover.byCity}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cityRow}>
               {cities.map((city) => {
                 const country = events.find((e) => e.city === city);
@@ -162,7 +164,7 @@ export default function DiscoverScreen() {
                 {userCountry.flag} {userCountry.name} Payment Methods
               </Text>
               <Pressable onPress={() => setShowCountryPicker(true)}>
-                <Text style={[styles.changeLink, { color: "#FF6B00" }]}>Change</Text>
+                <Text style={[styles.changeLink, { color: "#FF6B00" }]}>{t.actions.change}</Text>
               </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paymentRow}>
@@ -215,7 +217,7 @@ export default function DiscoverScreen() {
             {search.length > 0
               ? `Results for "${search}"`
               : selectedCategory === "For You"
-              ? "All Events"
+              ? t.discover.allEvents
               : selectedCategory}
             <Text style={[styles.count, { color: colors.mutedForeground }]}>
               {"  "}({filtered.length})
@@ -224,7 +226,7 @@ export default function DiscoverScreen() {
           {filtered.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="search" size={36} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No events found</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.discover?.noEvents ?? "No events found"}</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                 Try a different search or category
               </Text>
