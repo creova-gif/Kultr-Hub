@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect } from "react";
 import {
@@ -8,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -215,9 +217,45 @@ export default function TicketViewScreen() {
 
         {/* Actions */}
         <View style={styles.actions}>
-          <ActionBtn icon="download" label="Save to Phone" colors={colors} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
-          <ActionBtn icon="share-2" label="Share" colors={colors} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
-          <ActionBtn icon="map-pin" label="Get Directions" colors={colors} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
+          <ActionBtn
+            icon="download"
+            label="Save to Phone"
+            colors={colors}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Alert.alert(
+                "Save to Phone",
+                "Ticket saved to your device. Present this QR code at the venue entrance.",
+                [{ text: "Got it" }]
+              );
+            }}
+          />
+          <ActionBtn
+            icon="share-2"
+            label="Share"
+            colors={colors}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Share.share({
+                message: `My ticket to ${event.title} at ${event.venue}, ${event.city} on ${formatDate(event.date)}. Ticket #${resolvedTicketNumber} — See you there! 🎉`,
+                title: `Kultr Ticket — ${event.title}`,
+              });
+            }}
+          />
+          <ActionBtn
+            icon="map-pin"
+            label="Get Directions"
+            colors={colors}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              const query = encodeURIComponent(`${event.venue}, ${event.city}`);
+              const appleUrl = `maps:?q=${query}`;
+              const googleUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+              Linking.canOpenURL(appleUrl).then((can) => {
+                Linking.openURL(can ? appleUrl : googleUrl);
+              });
+            }}
+          />
         </View>
 
         {newPurchase === "true" && (

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -13,160 +14,250 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
-type NotifType = "ticket" | "reminder" | "promo" | "social";
+type NotifIcon =
+  | "check-circle"
+  | "bell"
+  | "dollar-sign"
+  | "map-pin"
+  | "users"
+  | "star";
 
 interface Notification {
   id: string;
-  type: NotifType;
+  type: string;
+  icon: NotifIcon;
+  iconColor: string;
   title: string;
   body: string;
   time: string;
   read: boolean;
-  eventId?: string;
 }
 
-const INITIAL_NOTIFS: Notification[] = [
+const NOTIFICATIONS: Notification[] = [
   {
     id: "n1",
-    type: "ticket",
+    type: "booking",
+    icon: "check-circle" as const,
+    iconColor: "#00C853",
     title: "Booking Confirmed",
-    body: "Your ticket for Sauti Za Mataifa has been confirmed. Ticket #KTR-98321.",
-    time: "2 min ago",
+    body: "Your ticket for Nairobi Jazz Collective is ready.",
+    time: "2h ago",
     read: false,
-    eventId: "evt-004",
   },
   {
     id: "n2",
     type: "reminder",
-    title: "Event Tomorrow",
-    body: "Echoes of Identity opens tomorrow at 10:00 AM. Don't forget to bring your ticket!",
-    time: "1 hour ago",
+    icon: "bell" as const,
+    iconColor: "#FF6B00",
+    title: "Event Tomorrow!",
+    body: "Don't forget — Afrobeats Night starts at 8pm.",
+    time: "5h ago",
     read: false,
-    eventId: "evt-002",
   },
   {
     id: "n3",
-    type: "promo",
-    title: "Early Bird Ends Tonight",
-    body: "Only 5 early bird tickets left for Afrobeat Nights. Save 33% before midnight.",
-    time: "3 hours ago",
-    read: false,
-    eventId: "evt-001",
+    type: "payment",
+    icon: "dollar-sign" as const,
+    iconColor: "#4F9DFF",
+    title: "Payment Successful",
+    body: "KSh 2,500 paid via M-Pesa for 1× GA ticket.",
+    time: "Yesterday",
+    read: true,
   },
   {
     id: "n4",
-    type: "social",
-    title: "3 friends are going",
-    body: "Amara, Kofi, and Zara are attending Kampala Comedy Night. Join them!",
-    time: "Yesterday",
+    type: "discovery",
+    icon: "map-pin" as const,
+    iconColor: "#FF6B00",
+    title: "New Event Near You",
+    body: "Lagos Roots Festival just dropped in your area.",
+    time: "2 days ago",
     read: true,
-    eventId: "evt-007",
   },
   {
     id: "n5",
-    type: "promo",
-    title: "New in Nairobi",
-    body: "Flavors of Kenya just went on sale. Be the first to grab your spot.",
-    time: "2 days ago",
+    type: "social",
+    icon: "users" as const,
+    iconColor: "#7B61FF",
+    title: "Your Tribe is Going",
+    body: "3 people from your network saved Accra Carnival.",
+    time: "3 days ago",
     read: true,
-    eventId: "evt-003",
   },
   {
     id: "n6",
-    type: "reminder",
-    title: "You saved an event",
-    body: "Lagos Groove Festival is coming up in 4 weeks. Ready to book?",
-    time: "3 days ago",
+    type: "reward",
+    icon: "star" as const,
+    iconColor: "#FFD600",
+    title: "Points Earned",
+    body: "You earned +150 KULTROINS for checking in!",
+    time: "5 days ago",
     read: true,
-    eventId: "evt-005",
   },
 ];
-
-const NOTIF_ICONS: Record<NotifType, { icon: string; color: string; bg: string }> = {
-  ticket: { icon: "tag", color: "#00C853", bg: "rgba(0,200,83,0.15)" },
-  reminder: { icon: "clock", color: "#FF6B00", bg: "rgba(255,107,0,0.15)" },
-  promo: { icon: "zap", color: "#FFD600", bg: "rgba(255,214,0,0.15)" },
-  social: { icon: "users", color: "#7C4DFF", bg: "rgba(124,77,255,0.15)" },
-};
 
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [notifs, setNotifs] = useState(INITIAL_NOTIFS);
+  const [notifs, setNotifs] = useState<Notification[]>(NOTIFICATIONS);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
+  const bottomPad =
+    Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
 
   const unreadCount = notifs.filter((n) => !n.read).length;
+  const allRead = unreadCount === 0;
 
-  const markAllRead = () => setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead = (id: string) => setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  const markAllRead = () =>
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+
+  const markRead = (id: string) =>
+    setNotifs((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
 
   const handlePress = (notif: Notification) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     markRead(notif.id);
-    if (notif.eventId) router.push(`/event/${notif.eventId}`);
   };
+
+  const unreadNotifs = notifs.filter((n) => !n.read);
+  const readNotifs = notifs.filter((n) => n.read);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad + 40 }}
+        contentContainerStyle={{
+          paddingTop: topPad + 12,
+          paddingBottom: bottomPad + 40,
+        }}
       >
         {/* Header */}
         <View style={styles.header}>
           <Pressable
             onPress={() => router.back()}
-            style={[styles.backBtn, { backgroundColor: colors.muted }]}
+            style={[styles.backBtn, { backgroundColor: colors.card }]}
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={20} color={colors.foreground} />
           </Pressable>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Notifications</Text>
+
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+              Notifications
+            </Text>
             {unreadCount > 0 && (
-              <Text style={[styles.headerSub, { color: "#FF6B00" }]}>{unreadCount} unread</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
             )}
           </View>
-          {unreadCount > 0 ? (
-            <Pressable onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.markAllText, { color: colors.foreground }]}>Mark all read</Text>
+
+          {!allRead ? (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                markAllRead();
+              }}
+              style={[styles.markAllBtn, { backgroundColor: colors.card }]}
+              accessibilityLabel="Mark all notifications as read"
+            >
+              <Text style={[styles.markAllText, { color: "#FF6B00" }]}>
+                Mark all read
+              </Text>
             </Pressable>
           ) : (
             <View style={{ width: 90 }} />
           )}
         </View>
 
-        {/* Notification groups */}
-        <View style={{ marginTop: 8 }}>
-          {/* Unread */}
-          {notifs.filter((n) => !n.read).length > 0 && (
-            <View style={styles.group}>
-              <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>New</Text>
-              <View style={styles.groupList}>
-                {notifs.filter((n) => !n.read).map((notif) => (
-                  <NotifItem key={notif.id} notif={notif} colors={colors} onPress={handlePress} />
-                ))}
-              </View>
-            </View>
-          )}
+        {/* All caught up banner when all read but items still visible */}
+        {allRead && readNotifs.length > 0 && (
+          <View
+            style={[
+              styles.caughtUpBanner,
+              {
+                backgroundColor: "rgba(0,200,83,0.08)",
+                borderColor: "#00C853",
+              },
+            ]}
+          >
+            <Feather name="check-circle" size={14} color="#00C853" />
+            <Text style={[styles.caughtUpText, { color: "#00C853" }]}>
+              You're all caught up!
+            </Text>
+          </View>
+        )}
 
-          {/* Read */}
-          {notifs.filter((n) => n.read).length > 0 && (
-            <View style={styles.group}>
-              <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>Earlier</Text>
-              <View style={styles.groupList}>
-                {notifs.filter((n) => n.read).map((notif) => (
-                  <NotifItem key={notif.id} notif={notif} colors={colors} onPress={handlePress} />
-                ))}
-              </View>
+        {/* Empty state: no notifs at all */}
+        {notifs.length === 0 && (
+          <View style={styles.emptyState}>
+            <Feather name="check-circle" size={48} color="#00C853" />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+              You're all caught up!
+            </Text>
+            <Text
+              style={[styles.emptySubtitle, { color: colors.mutedForeground }]}
+            >
+              No new notifications right now.
+            </Text>
+          </View>
+        )}
+
+        {/* Unread section */}
+        {unreadNotifs.length > 0 && (
+          <View style={styles.group}>
+            <Text
+              style={[styles.groupLabel, { color: colors.mutedForeground }]}
+            >
+              NEW
+            </Text>
+            <View style={styles.groupList}>
+              {unreadNotifs.map((notif) => (
+                <NotifItem
+                  key={notif.id}
+                  notif={notif}
+                  colors={colors}
+                  onPress={handlePress}
+                />
+              ))}
             </View>
-          )}
-        </View>
+          </View>
+        )}
+
+        {/* Read section */}
+        {readNotifs.length > 0 && (
+          <View style={styles.group}>
+            <Text
+              style={[styles.groupLabel, { color: colors.mutedForeground }]}
+            >
+              EARLIER
+            </Text>
+            <View style={styles.groupList}>
+              {readNotifs.map((notif) => (
+                <NotifItem
+                  key={notif.id}
+                  notif={notif}
+                  colors={colors}
+                  onPress={handlePress}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Settings hint */}
-        <View style={[styles.settingsHint, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.settingsHint,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <Feather name="settings" size={14} color={colors.mutedForeground} />
-          <Text style={[styles.settingsText, { color: colors.mutedForeground }]}>
+          <Text
+            style={[styles.settingsText, { color: colors.mutedForeground }]}
+          >
             Manage notification preferences in Settings
           </Text>
         </View>
@@ -184,35 +275,54 @@ function NotifItem({
   colors: any;
   onPress: (n: Notification) => void;
 }) {
-  const cfg = NOTIF_ICONS[notif.type];
+  const iconBg = notif.iconColor + "22";
+
   return (
     <Pressable
       onPress={() => onPress(notif)}
+      accessibilityLabel={`${notif.title}: ${notif.body}. ${notif.time}. ${notif.read ? "Read" : "Unread"}`}
       style={({ pressed }) => [
         styles.notifItem,
         {
-          backgroundColor: notif.read ? colors.card : `${colors.card}`,
-          borderColor: notif.read ? colors.border : "#FF6B00" + "40",
-          borderLeftWidth: notif.read ? 0 : 3,
-          borderLeftColor: notif.read ? "transparent" : "#FF6B00",
-          opacity: pressed ? 0.85 : 1,
+          backgroundColor: colors.card,
+          borderColor: notif.read ? colors.border : "#FF6B00" + "50",
+          borderLeftWidth: notif.read ? StyleSheet.hairlineWidth : 3,
+          borderLeftColor: notif.read ? colors.border : "#FF6B00",
+          opacity: pressed ? 0.82 : 1,
         },
       ]}
     >
-      <View style={[styles.notifIcon, { backgroundColor: cfg.bg }]}>
-        <Feather name={cfg.icon as any} size={18} color={cfg.color} />
+      {/* Icon circle — 44pt minimum */}
+      <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+        <Feather name={notif.icon} size={20} color={notif.iconColor} />
       </View>
+
+      {/* Content */}
       <View style={styles.notifContent}>
         <View style={styles.notifTitleRow}>
-          <Text style={[styles.notifTitle, { color: colors.foreground, fontWeight: notif.read ? "600" : "800" }]}>
+          <Text
+            style={[
+              styles.notifTitle,
+              {
+                color: colors.foreground,
+                fontWeight: notif.read ? "600" : "800",
+              },
+            ]}
+            numberOfLines={1}
+          >
             {notif.title}
           </Text>
           {!notif.read && <View style={styles.unreadDot} />}
         </View>
-        <Text style={[styles.notifBody, { color: colors.mutedForeground }]} numberOfLines={2}>
+        <Text
+          style={[styles.notifBody, { color: colors.mutedForeground }]}
+          numberOfLines={2}
+        >
           {notif.body}
         </Text>
-        <Text style={[styles.notifTime, { color: colors.mutedForeground }]}>{notif.time}</Text>
+        <Text style={[styles.notifTime, { color: colors.mutedForeground }]}>
+          {notif.time}
+        </Text>
       </View>
     </Pressable>
   );
@@ -227,11 +337,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   headerTitle: { fontSize: 18, fontWeight: "700" },
-  headerSub: { fontSize: 12, fontWeight: "600", marginTop: 1 },
-  markAllBtn: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
-  markAllText: { fontSize: 12, fontWeight: "600" },
+  badge: {
+    backgroundColor: "#FF6B00",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  badgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  markAllBtn: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  markAllText: { fontSize: 12, fontWeight: "700" },
+  caughtUpBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  caughtUpText: { fontSize: 13, fontWeight: "600" },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: "800", textAlign: "center" },
+  emptySubtitle: { fontSize: 14, textAlign: "center" },
   group: { marginBottom: 8 },
   groupLabel: {
     fontSize: 11,
@@ -250,18 +405,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "flex-start",
   },
-  notifIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   notifContent: { flex: 1 },
-  notifTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 3 },
+  notifTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
   notifTitle: { fontSize: 14, flex: 1, marginRight: 6 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF6B00" },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF6B00",
+    flexShrink: 0,
+  },
   notifBody: { fontSize: 13, lineHeight: 18, marginBottom: 6 },
   notifTime: { fontSize: 11 },
   settingsHint: {
