@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
-import Svg, { Defs, LinearGradient as SvgGradient, Path, Stop, Circle, G, Line, Text as SvgText } from "react-native-svg";
+import Svg, { Defs, LinearGradient as SvgGradient, Path, Stop, Circle, G, Line, Rect, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -66,6 +66,72 @@ function buildDonutPath(segments: DonutSegment[], cx: number, cy: number, r: num
     angle += sweep + 2;
     return d;
   });
+}
+
+// ── Bar Chart ────────────────────────────────────────────────────────────────
+
+interface BarChartProps {
+  data: { label: string; value: number }[];
+  color: string;
+  height?: number;
+}
+
+function BarChart({ data, color, height = 120 }: BarChartProps) {
+  const colors = useColors();
+  const barChartWidth = Dimensions.get("window").width - 64; // 16px margins each side + 16 card padding
+  if (!data.length) return null;
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const barWidth = Math.floor((barChartWidth - 20) / data.length) - 6;
+  const chartHeight = height - 24; // leave room for labels
+
+  return (
+    <Svg width={barChartWidth} height={height}>
+      {/* Gridlines */}
+      {[0.25, 0.5, 0.75, 1].map((fraction) => {
+        const y = chartHeight * (1 - fraction);
+        return (
+          <Line
+            key={fraction}
+            x1={0}
+            y1={y}
+            x2={barChartWidth}
+            y2={y}
+            stroke={colors.border}
+            strokeWidth={0.5}
+            strokeDasharray="4 4"
+          />
+        );
+      })}
+      {/* Bars */}
+      {data.map((item, i) => {
+        const barHeight = Math.max(4, (item.value / max) * chartHeight);
+        const x = i * (barWidth + 6) + 3;
+        const y = chartHeight - barHeight;
+        return (
+          <G key={item.label}>
+            <Rect
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              rx={4}
+              fill={color}
+              opacity={0.85}
+            />
+            <SvgText
+              x={x + barWidth / 2}
+              y={height - 2}
+              fontSize={9}
+              fill={colors.mutedForeground}
+              textAnchor="middle"
+            >
+              {item.label}
+            </SvgText>
+          </G>
+        );
+      })}
+    </Svg>
+  );
 }
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
@@ -385,6 +451,52 @@ export default function CreatorStudioScreen() {
         </View>
       </View>
 
+      {/* ── Revenue Chart ── */}
+      {createdEvents.length > 0 && (
+        <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: colors.foreground }]}>Revenue by Event</Text>
+            <View style={[styles.chartBadge, { backgroundColor: "rgba(255,107,0,0.12)" }]}>
+              <Text style={{ color: "#FF6B00", fontSize: 10, fontWeight: "700" }}>LIVE</Text>
+            </View>
+          </View>
+          <BarChart
+            data={createdEvents.slice(0, 6).map((e) => ({
+              label: e.title.split(" ")[0].slice(0, 6),
+              value: e.revenue,
+            }))}
+            color="#FF6B00"
+          />
+          <View style={styles.chartLegend}>
+            <View style={[styles.chartLegendDot, { backgroundColor: "#FF6B00" }]} />
+            <Text style={[styles.chartLegendText, { color: colors.mutedForeground }]}>
+              Revenue ({createdEvents[0]?.currency ?? "KES"})
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── Tickets Sold Chart ── */}
+      {createdEvents.length > 0 && (
+        <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: colors.foreground }]}>Tickets Sold</Text>
+          </View>
+          <BarChart
+            data={createdEvents.slice(0, 6).map((e) => ({
+              label: e.title.split(" ")[0].slice(0, 6),
+              value: e.ticketsSold,
+            }))}
+            color="#7B61FF"
+            height={100}
+          />
+          <View style={styles.chartLegend}>
+            <View style={[styles.chartLegendDot, { backgroundColor: "#7B61FF" }]} />
+            <Text style={[styles.chartLegendText, { color: colors.mutedForeground }]}>Tickets sold per event</Text>
+          </View>
+        </View>
+      )}
+
       {/* ── Recent Events ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -545,6 +657,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chartTitle: { fontSize: 14, fontWeight: "800" },
+  chartBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  chartLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  chartLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  chartLegendText: { fontSize: 11 },
 
   donutRow: {
     flexDirection: "row",
