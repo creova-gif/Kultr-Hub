@@ -59,7 +59,7 @@ export default function GamificationScreen() {
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
-  const { data, isLoading, isError } = useGetGamificationProfile({
+  const { data, isLoading, isError, refetch } = useGetGamificationProfile({
     query: {
       queryKey: getGetGamificationProfileQueryKey(),
       enabled: !!authToken,
@@ -122,6 +122,14 @@ export default function GamificationScreen() {
         <View style={styles.empty}>
           <Feather name="wifi-off" size={32} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Couldn't load your profile</Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: "#FF6B00", borderRadius: 20 }}
+            accessibilityLabel="Retry loading profile"
+            accessibilityRole="button"
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Try Again</Text>
+          </Pressable>
         </View>
       ) : (
         <>

@@ -239,7 +239,7 @@ export default function CreatorStudioScreen() {
           <StatCard
             label="Tickets Sold"
             value={totalSold.toLocaleString()}
-            trend={`${Math.round(Math.random() * 15 + 5)}%`}
+            trend="—"
             trendUp
             icon="tag"
             colors={colors}
@@ -247,7 +247,7 @@ export default function CreatorStudioScreen() {
           <StatCard
             label="Revenue"
             value={formatRevenue(totalRevenue)}
-            trend={`${Math.round(Math.random() * 20 + 5)}%`}
+            trend="—"
             trendUp
             icon="credit-card"
             colors={colors}
@@ -389,9 +389,9 @@ export default function CreatorStudioScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Events</Text>
-          <Pressable onPress={() => router.push("/create-event")}>
-            <Text style={styles.viewAllText}>View All →</Text>
-          </Pressable>
+          <View>
+            <Text style={styles.viewAllText}>All Events</Text>
+          </View>
         </View>
 
         <View style={styles.eventList}>

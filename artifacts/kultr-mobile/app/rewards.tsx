@@ -22,8 +22,8 @@ export default function RewardsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { authToken } = useApp();
-  const { data: progress, isLoading } = useQuestProgress();
-  const { data: perksData } = usePerks();
+  const { data: progress, isLoading, isError } = useQuestProgress();
+  const { data: perksData, isError: isPerksError } = usePerks();
   const unlock = useUnlockPerk();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -96,6 +96,16 @@ export default function RewardsScreen() {
         ) : isLoading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color="#FF6B00" />
+          </View>
+        ) : isError || isPerksError ? (
+          <View style={styles.empty}>
+            <View style={[styles.emptyIcon, { backgroundColor: colors.muted }]}>
+              <Feather name="wifi-off" size={34} color={colors.mutedForeground} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Couldn't load rewards</Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Check your connection and try again.
+            </Text>
           </View>
         ) : (
           <>
