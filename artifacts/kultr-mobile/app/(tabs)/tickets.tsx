@@ -86,6 +86,8 @@ export default function TicketsScreen() {
           <Pressable
             style={styles.discoverBtn}
             onPress={() => router.push("/(tabs)/discover" as any)}
+            accessibilityLabel="Browse Events"
+            accessibilityRole="button"
           >
             <Text style={styles.discoverBtnText}>Browse Events</Text>
           </Pressable>

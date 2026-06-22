@@ -40,6 +40,8 @@ export default function SavedEventsScreen() {
           <Pressable
             onPress={() => router.back()}
             style={[styles.backBtn, { backgroundColor: colors.muted }]}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Feather name="arrow-left" size={20} color={colors.foreground} />
           </Pressable>
@@ -56,7 +58,12 @@ export default function SavedEventsScreen() {
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               Tap the heart on any event to save it for later
             </Text>
-            <Pressable style={styles.browseBtn} onPress={() => router.replace("/(tabs)/discover")}>
+            <Pressable
+              style={styles.browseBtn}
+              onPress={() => router.replace("/(tabs)/discover")}
+              accessibilityLabel="Discover Events"
+              accessibilityRole="button"
+            >
               <Text style={styles.browseBtnText}>Browse Events</Text>
             </Pressable>
           </View>
@@ -72,6 +79,8 @@ export default function SavedEventsScreen() {
                 <Pressable
                   key={event.id}
                   onPress={() => router.push(`/event/${event.id}`)}
+                  accessibilityLabel={`View ${event.title} in ${event.city}`}
+                  accessibilityRole="button"
                   style={({ pressed }) => [
                     styles.card,
                     {
@@ -124,6 +133,8 @@ export default function SavedEventsScreen() {
                             toggleSaved(event.id);
                           }}
                           style={[styles.actionBtn, { backgroundColor: "rgba(255,107,0,0.15)", borderColor: "#FF6B00" }]}
+                          accessibilityLabel={`Remove ${event.title} from saved events`}
+                          accessibilityRole="button"
                         >
                           <Feather name="heart" size={14} color="#FF6B00" />
                           <Text style={[styles.actionBtnText, { color: "#FF6B00" }]}>Saved</Text>
@@ -131,6 +142,8 @@ export default function SavedEventsScreen() {
                         <Pressable
                           onPress={() => router.push(`/event/${event.id}`)}
                           style={[styles.actionBtn, { backgroundColor: "#FF6B00", borderColor: "#FF6B00" }]}
+                          accessibilityLabel={`Get tickets for ${event.title}`}
+                          accessibilityRole="button"
                         >
                           <Text style={[styles.actionBtnText, { color: "#fff" }]}>Get Tickets</Text>
                         </Pressable>
@@ -156,7 +169,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "700" },
   countText: { fontSize: 13 },
   empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32, gap: 12 },

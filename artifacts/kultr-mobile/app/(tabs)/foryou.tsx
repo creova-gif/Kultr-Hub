@@ -6,6 +6,7 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
   Platform,
   Pressable,
@@ -48,6 +49,8 @@ const INTERESTS = [
   { id: "film", label: "Film", icon: "film" },
 ] as const;
 
+const DIASPORA_COUNTRIES = ["Kenya", "Ghana", "Nigeria", "South Africa", "Uganda", "Tanzania"];
+
 function hashId(id: string): number {
   return id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
 }
@@ -86,6 +89,16 @@ export default function ForYouScreen() {
       .map((e) => scoreEvent(e, userInterests))
       .sort((a, b) => b.score - a.score);
   }, [events, userInterests]);
+
+  const diasporaEvents = useMemo(() => {
+    return scored
+      .filter(
+        (e) =>
+          DIASPORA_COUNTRIES.includes(e.country) ||
+          e.category === "Heritage"
+      )
+      .slice(0, 5);
+  }, [scored]);
 
   const toggleInterest = (id: string) => {
     Haptics.selectionAsync();
@@ -141,6 +154,54 @@ export default function ForYouScreen() {
           </View>
         </LinearGradient>
 
+        {/* ── Diaspora Picks ── */}
+        {scored.length > 0 && (
+          <View style={styles.diasporaSection}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionLeft}>
+                <Text style={{ color: "#7B61FF", fontSize: 14 }}>✦</Text>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Home Vibes
+                </Text>
+              </View>
+              <Text style={[styles.diasporaSub, { color: colors.mutedForeground }]}>
+                Events from the motherland
+              </Text>
+            </View>
+            <FlatList
+              horizontal
+              data={diasporaEvents}
+              keyExtractor={(e) => `disp-${e.id}`}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+              renderItem={({ item }) => {
+                const img = EVENT_IMAGES[item.imageKey];
+                return (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push(`/event/${item.id}`);
+                    }}
+                    style={[styles.diasporaCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    accessibilityLabel={`${item.title} in ${item.city}`}
+                    accessibilityRole="button"
+                  >
+                    <Image source={img} style={styles.diasporaCardImage} resizeMode="cover" />
+                    <LinearGradient
+                      colors={["transparent", "rgba(0,0,0,0.8)"]}
+                      style={styles.diasporaCardGradient}
+                    />
+                    <View style={styles.diasporaCardInfo}>
+                      <Text style={styles.diasporaCardCity}>{item.city.toUpperCase()}</Text>
+                      <Text style={styles.diasporaCardTitle} numberOfLines={2}>{item.title}</Text>
+                    </View>
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        )}
+
         {/* ── Section Header ── */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
@@ -156,6 +217,8 @@ export default function ForYouScreen() {
               setShowRefine(true);
             }}
             style={[styles.refineBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            accessibilityLabel="Refine your vibe preferences"
+            accessibilityRole="button"
           >
             <Feather name="sliders" size={13} color={colors.mutedForeground} />
             <Text style={[styles.refineBtnText, { color: colors.mutedForeground }]}>Refine Vibe</Text>
@@ -185,6 +248,8 @@ export default function ForYouScreen() {
               <Pressable
                 key={event.id}
                 onPress={() => router.push(`/event/${event.id}`)}
+                accessibilityLabel={`${event.title} in ${event.city}, ${event.score}% match`}
+                accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.matchCard,
                   {
@@ -266,6 +331,8 @@ export default function ForYouScreen() {
                   <Pressable
                     key={item.id}
                     onPress={() => toggleInterest(item.id)}
+                    accessibilityLabel={`${item.label}${selected ? ", selected" : ""}`}
+                    accessibilityRole="checkbox"
                     style={[
                       styles.interestChip,
                       {
@@ -282,7 +349,12 @@ export default function ForYouScreen() {
                 );
               })}
             </View>
-            <Pressable style={styles.applyBtn} onPress={applyRefine}>
+            <Pressable
+              style={styles.applyBtn}
+              onPress={applyRefine}
+              accessibilityLabel="Apply vibe preferences"
+              accessibilityRole="button"
+            >
               <Text style={styles.applyBtnText}>Apply Vibe</Text>
               <Feather name="check" size={16} color="#fff" />
             </Pressable>
@@ -375,6 +447,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   refineBtnText: { fontSize: 12, fontWeight: "600" },
+
+  diasporaSection: { marginBottom: 8 },
+  diasporaSub: { fontSize: 11 },
+  diasporaCard: {
+    width: 160,
+    height: 200,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    position: "relative",
+  },
+  diasporaCardImage: { width: "100%", height: "100%" },
+  diasporaCardGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "60%",
+  },
+  diasporaCardInfo: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    right: 12,
+  },
+  diasporaCardCity: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: "#FF6B00",
+    marginBottom: 4,
+  },
+  diasporaCardTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+    lineHeight: 18,
+  },
 
   cardList: { paddingHorizontal: 16, gap: 12 },
   loadingWrap: { alignItems: "center", paddingVertical: 48, gap: 12 },
