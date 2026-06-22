@@ -307,7 +307,7 @@ export default function LoginScreen() {
                 </Text>
               </Text>
 
-              {devCode != null && (
+              {devCode != null && __DEV__ && (
                 <View
                   style={[
                     styles.devBanner,

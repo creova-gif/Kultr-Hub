@@ -259,7 +259,7 @@ export default function HomeScreen() {
           {/* ── NEAR NAIROBI ── */}
           {nearNairobi.length > 0 && (
             <View style={styles.section}>
-              <SectionTitle label="NEAR NAIROBI" onSeeAll={() => router.push("/discover")} />
+              <SectionTitle label="NEAR NAIROBI" onSeeAll={() => router.push("/(tabs)/discover" as any)} />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -275,7 +275,7 @@ export default function HomeScreen() {
           {/* ── ACROSS AFRICA ── */}
           {acrossAfrica.length > 0 && (
             <View style={styles.section}>
-              <SectionTitle label="ACROSS AFRICA" onSeeAll={() => router.push("/discover")} />
+              <SectionTitle label="ACROSS AFRICA" onSeeAll={() => router.push("/(tabs)/discover" as any)} />
               <View style={styles.africaGrid}>
                 {acrossAfrica.map((event) => {
                   const image = EVENT_IMAGES[event.imageKey];

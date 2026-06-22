@@ -167,12 +167,12 @@ export default function OnboardingScreen() {
     });
   };
 
-  const finish = () => {
+  const finish = async () => {
     const country = EA_COUNTRIES.find((c) => c.code === selectedCountry) ?? EA_COUNTRIES[0];
-    setUserInterests(selectedInterests);
+    await setUserInterests(selectedInterests);
     setUserCountry(country);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setOnboardingDone(true);
+    await setOnboardingDone(true);
     router.replace("/(tabs)");
   };
 

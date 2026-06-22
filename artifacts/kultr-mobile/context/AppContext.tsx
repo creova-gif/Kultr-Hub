@@ -61,8 +61,8 @@ interface AppContextType {
   toggleSaved: (eventId: string) => void;
   isSaved: (eventId: string) => boolean;
   setUserCountry: (country: EACountry) => void;
-  setOnboardingDone: (done: boolean) => void;
-  setUserInterests: (interests: string[]) => void;
+  setOnboardingDone: (done: boolean) => Promise<void>;
+  setUserInterests: (interests: string[]) => Promise<void>;
   addCreatedEvent: (event: CreatedEvent) => void;
   setAuth: (token: string, user: AuthUser) => Promise<void>;
   clearAuth: () => Promise<void>;
@@ -96,6 +96,8 @@ const DEMO_CREATED_EVENTS: CreatedEvent[] = [
 
 const TOKEN_KEY = "kultr_auth_token";
 const LANG_KEY = "kultr_language";
+const ONBOARDING_KEY = "kultr_onboarding_done";
+const INTERESTS_KEY = "kultr_user_interests";
 
 function adaptAnalyticsStat(stat: CreatedEventStats): CreatedEvent {
   const date = stat.eventDate.slice(0, 10);
@@ -166,7 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => setAuthTokenGetter(null);
   }, [authToken]);
 
-  // Restore persisted token + language on mount
+  // Restore persisted token + language + onboarding state on mount
   React.useEffect(() => {
     AsyncStorage.getItem(TOKEN_KEY).then((stored) => {
       if (stored) setAuthToken(stored);
@@ -177,6 +179,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLanguageState(lang);
         I18nManager.allowRTL(true);
         I18nManager.forceRTL(lang === "ar");
+      }
+    });
+    AsyncStorage.getItem(ONBOARDING_KEY).then((stored) => {
+      if (stored === "true") setOnboardingDone(true);
+    });
+    AsyncStorage.getItem(INTERESTS_KEY).then((stored) => {
+      if (stored) {
+        try { setUserInterests(JSON.parse(stored)); } catch { /* ignore corrupt data */ }
       }
     });
   }, []);
@@ -199,6 +209,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
     }
   }, [language]);
+
+  const persistOnboardingDone = useCallback(async (done: boolean) => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, String(done));
+    setOnboardingDone(done);
+  }, []);
+
+  const persistUserInterests = useCallback(async (interests: string[]) => {
+    await AsyncStorage.setItem(INTERESTS_KEY, JSON.stringify(interests));
+    setUserInterests(interests);
+  }, []);
 
   const setAuth = useCallback(async (token: string, user: AuthUser) => {
     await AsyncStorage.setItem(TOKEN_KEY, token);
@@ -246,8 +266,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleSaved,
         isSaved,
         setUserCountry,
-        setOnboardingDone,
-        setUserInterests,
+        setOnboardingDone: persistOnboardingDone,
+        setUserInterests: persistUserInterests,
         addCreatedEvent,
         setAuth,
         clearAuth,

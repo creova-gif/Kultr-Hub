@@ -95,7 +95,7 @@ export default function ForYouScreen() {
   };
 
   const applyRefine = () => {
-    setUserInterests(localInterests);
+    void setUserInterests(localInterests);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowRefine(false);
   };

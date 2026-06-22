@@ -85,7 +85,7 @@ export default function TicketsScreen() {
           </Text>
           <Pressable
             style={styles.discoverBtn}
-            onPress={() => router.push("/discover")}
+            onPress={() => router.push("/(tabs)/discover" as any)}
           >
             <Text style={styles.discoverBtnText}>Browse Events</Text>
           </Pressable>
