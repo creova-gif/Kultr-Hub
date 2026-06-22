@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -45,6 +46,47 @@ function seededGoing(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return 80 + (h % 420);
+}
+
+function openDirections(venue: string, city: string): void {
+  const query = encodeURIComponent(`${venue}, ${city}`);
+  const appleUrl = `maps:?q=${query}`;
+  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+  Linking.canOpenURL(appleUrl).then((can) => {
+    Linking.openURL(can ? appleUrl : googleUrl);
+  });
+}
+
+const TRIBE_COMMENTS = [
+  { emoji: "🔥", text: "This event is going to be legendary!" },
+  { emoji: "🎶", text: "Can't wait for the music." },
+  { emoji: "✈️", text: "Flying in from London for this one." },
+  { emoji: "👑", text: "The lineup is insane this year." },
+  { emoji: "🌍", text: "Representing the diaspora!" },
+  { emoji: "💃", text: "Already got my outfit ready." },
+  { emoji: "🎉", text: "Been waiting for this all year." },
+  { emoji: "🙌", text: "The culture is calling." },
+];
+
+const TRIBE_AVATARS = [
+  { color: "#FF6B00", initial: "K" },
+  { color: "#7B61FF", initial: "A" },
+  { color: "#00C853", initial: "J" },
+  { color: "#E91E63", initial: "M" },
+  { color: "#00BCD4", initial: "T" },
+];
+
+function getTribeComments(eventId: string): Array<{ emoji: string; text: string; avatar: typeof TRIBE_AVATARS[0]; name: string }> {
+  let h = 0;
+  for (let i = 0; i < eventId.length; i++) h = (h * 31 + eventId.charCodeAt(i)) >>> 0;
+  const names = ["Kenji", "Amara", "Joelle", "Marcus", "Tiana", "Kofi", "Zara", "Dayo"];
+  const count = 3 + (h % 3);
+  return Array.from({ length: count }, (_, i) => ({
+    emoji: TRIBE_COMMENTS[(h + i * 7) % TRIBE_COMMENTS.length].emoji,
+    text: TRIBE_COMMENTS[(h + i * 7) % TRIBE_COMMENTS.length].text,
+    avatar: TRIBE_AVATARS[(h + i * 3) % TRIBE_AVATARS.length],
+    name: names[(h + i * 5) % names.length],
+  }));
 }
 
 export default function EventDetailScreen() {
@@ -291,6 +333,24 @@ export default function EventDetailScreen() {
             )}
           </View>
 
+
+          {/* Directions */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              openDirections(event.venue, event.city);
+            }}
+            style={[styles.directionsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            accessibilityLabel={`Get directions to ${event.venue}`}
+            accessibilityRole="button"
+          >
+            <Feather name="navigation" size={14} color="#FF6B00" />
+            <Text style={[styles.directionsBtnText, { color: colors.foreground }]}>
+              Get Directions to {event.venue}
+            </Text>
+            <Feather name="external-link" size={12} color={colors.mutedForeground} />
+          </Pressable>
+
           {/* Tags */}
           {event.tags && event.tags.length > 0 && (
             <View style={styles.tagsRow}>
@@ -304,6 +364,21 @@ export default function EventDetailScreen() {
                   </Text>
                 </View>
               ))}
+            </View>
+          )}
+
+
+          {/* Demand indicator — show when ≥1 ticket type has <30 left */}
+          {event.ticketTypes.some((t) => t.available > 0 && t.available < 30) && (
+            <View style={[styles.demandBanner, { backgroundColor: "rgba(255,107,0,0.08)", borderColor: "#FF6B00" + "40" }]}>
+              <Feather name="trending-up" size={14} color="#FF6B00" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.demandTitle, { color: "#FF6B00" }]}>Selling Fast</Text>
+                <Text style={[styles.demandSub, { color: colors.mutedForeground }]}>
+                  {event.ticketTypes.filter((t) => t.available > 0 && t.available < 30).map((t) => `${t.name}: ${t.available} left`).join(" · ")}
+                </Text>
+              </View>
+              <View style={styles.demandDot} />
             </View>
           )}
 
@@ -501,6 +576,43 @@ export default function EventDetailScreen() {
                   </Pressable>
                 );
               })}
+            </View>
+          </View>
+
+
+          {/* Tribe Buzz */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Tribe Buzz
+            </Text>
+            <View style={styles.tribeComments}>
+              {getTribeComments(event.id).map((comment, i) => (
+                <View
+                  key={i}
+                  style={[styles.tribeComment, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <View style={[styles.tribeAvatar, { backgroundColor: comment.avatar.color }]}>
+                    <Text style={styles.tribeAvatarText}>{comment.avatar.initial}</Text>
+                  </View>
+                  <View style={styles.tribeCommentBody}>
+                    <Text style={[styles.tribeCommentName, { color: colors.foreground }]}>{comment.name}</Text>
+                    <Text style={[styles.tribeCommentText, { color: colors.mutedForeground }]}>
+                      {comment.emoji} {comment.text}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              <Pressable
+                style={[styles.joinConversationBtn, { borderColor: colors.border }]}
+                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                accessibilityLabel="Join the conversation"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.joinConversationText, { color: colors.mutedForeground }]}>
+                  Join the conversation...
+                </Text>
+                <Feather name="send" size={14} color="#FF6B00" />
+              </Pressable>
             </View>
           </View>
 
@@ -785,6 +897,64 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  directionsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  directionsBtnText: { flex: 1, fontSize: 13, fontWeight: "600" },
+  demandBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  demandTitle: { fontSize: 13, fontWeight: "800" },
+  demandSub: { fontSize: 11, marginTop: 2 },
+  demandDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF6B00",
+  },
+  tribeComments: { gap: 10 },
+  tribeComment: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tribeAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  tribeAvatarText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  tribeCommentBody: { flex: 1 },
+  tribeCommentName: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
+  tribeCommentText: { fontSize: 12, lineHeight: 17 },
+  joinConversationBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  joinConversationText: { fontSize: 13 },
   ctaBar: {
     position: "absolute",
     bottom: 0,
