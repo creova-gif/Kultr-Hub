@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -18,7 +18,7 @@ const LANGUAGES: { code: Language; label: string; native: string }[] = [
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { language, setLanguage } = useApp();
+  const { language, setLanguage, lowBandwidth, setLowBandwidth } = useApp();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -95,6 +95,25 @@ export default function SettingsScreen() {
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </Pressable>
       </View>
+
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CONNECTIVITY</Text>
+
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.row, { justifyContent: "space-between" }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Data Saver Mode</Text>
+            <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+              Loads fewer events for slow connections
+            </Text>
+          </View>
+          <Switch
+            value={lowBandwidth}
+            onValueChange={setLowBandwidth}
+            trackColor={{ false: "#333", true: "#FF6B00" }}
+            thumbColor="#fff"
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -116,5 +135,5 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowLabel: { fontSize: 16, fontWeight: "600" },
   rowSub: { fontSize: 12, marginTop: 2 },
-  footnote: { fontSize: 11, lineHeight: 17, textAlign: "center" },
+  footnote: { fontSize: 11, lineHeight: 17, textAlign: "center", marginBottom: 16 },
 });

@@ -124,8 +124,17 @@ export default function CreateEventScreen() {
             ticketTypes,
           },
         });
-      } catch {
-        // Fall through: add locally so the user isn't blocked
+      } catch (err) {
+        if (authToken) {
+          setPublishing(false);
+          Alert.alert(
+            "Publish failed",
+            "Couldn't reach the server. Please check your connection and try again.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+        // Fall through: add locally so the user isn't blocked (demo/unauthenticated mode)
         addCreatedEvent(localEvent);
         setPublishing(false);
         setPublished(true);

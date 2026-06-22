@@ -108,7 +108,12 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-          <Pressable style={[styles.editBtn, { borderColor: "#FF6B00" }]}>
+          <Pressable
+            style={[styles.editBtn, { borderColor: "#FF6B00" }]}
+            onPress={() => Alert.alert("Edit Profile", "Profile editing coming soon.")}
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+          >
             <Text style={[styles.editBtnText, { color: "#FF6B00" }]}>Edit</Text>
           </Pressable>
         </View>

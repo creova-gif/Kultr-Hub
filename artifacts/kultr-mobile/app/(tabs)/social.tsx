@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -273,14 +274,23 @@ export default function SocialScreen() {
                 <View style={styles.actionBtns}>
                   <Pressable
                     style={[styles.chatBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                    onPress={() => Haptics.selectionAsync()}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.push(`/event/${event.id}` as any);
+                    }}
                   >
                     <Feather name="message-circle" size={13} color={colors.foreground} />
                     <Text style={[styles.chatBtnText, { color: colors.foreground }]}>Chat</Text>
                   </Pressable>
                   <Pressable
                     style={styles.inviteBtn}
-                    onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+                    onPress={async () => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      await Share.share({
+                        message: `🎉 Join me at ${event.title} on ${event.date} at ${event.venue}, ${event.city}! Get tickets on Kultr.`,
+                        title: event.title,
+                      });
+                    }}
                   >
                     <Feather name="user-plus" size={13} color="#fff" />
                     <Text style={styles.inviteBtnText}>Invite</Text>
@@ -305,7 +315,13 @@ export default function SocialScreen() {
         </View>
         <Pressable
           style={[styles.findFriendsBtn, { borderColor: "#FF6B00" }]}
-          onPress={() => Haptics.selectionAsync()}
+          onPress={async () => {
+                Haptics.selectionAsync();
+                await Share.share({
+                  message: "Join me on Kultr — discover the best cultural events! Download the app and let's go together.",
+                  title: "Join Kultr",
+                });
+              }}
         >
           <Text style={styles.findFriendsBtnText}>Find Friends</Text>
         </Pressable>
