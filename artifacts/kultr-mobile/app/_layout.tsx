@@ -27,8 +27,7 @@ SplashScreen.preventAutoHideAsync();
 const apiUrl =
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
   process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ ? "http://localhost:3001" : "");
-if (!apiUrl) throw new Error("EXPO_PUBLIC_API_URL must be set for production builds");
+  "http://localhost:3001";
 setBaseUrl(apiUrl);
 
 const queryClient = new QueryClient({
