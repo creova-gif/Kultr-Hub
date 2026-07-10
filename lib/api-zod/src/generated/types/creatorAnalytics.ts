@@ -5,11 +5,17 @@
  * Kultr Hub API
  * OpenAPI spec version: 0.2.0
  */
+import type { CitySalesPoint } from "./citySalesPoint";
 import type { CreatedEventStats } from "./createdEventStats";
+import type { WeeklySalesPoint } from "./weeklySalesPoint";
 
 export interface CreatorAnalytics {
   events: CreatedEventStats[];
   totalRevenue: number;
   totalTicketsSold: number;
   liveEvents: number;
+  /** Real ticket sales for the last 8 weeks, bucketed by purchase date. Oldest first. */
+  weeklySales: WeeklySalesPoint[];
+  /** Real ticket sales grouped by event city, highest first. */
+  salesByCity: CitySalesPoint[];
 }

@@ -145,7 +145,7 @@ router.get("/creator/analytics", requireAuth, async (req: Request, res: Response
     .orderBy(desc(eventsTable.createdAt));
 
   if (events.length === 0) {
-    res.json({ events: [], totalRevenue: 0, totalTicketsSold: 0, liveEvents: 0 });
+    res.json({ events: [], totalRevenue: 0, totalTicketsSold: 0, liveEvents: 0, weeklySales: [], salesByCity: [] });
     return;
   }
 
@@ -193,7 +193,48 @@ router.get("/creator/analytics", requireAuth, async (req: Request, res: Response
   const totalTicketsSold = eventStats.reduce((s, e) => s + e.ticketsSold, 0);
   const liveEvents = eventStats.filter((e) => e.status === "live").length;
 
-  res.json({ events: eventStats, totalRevenue, totalTicketsSold, liveEvents });
+  // Real 8-week sales trend from actual purchase timestamps — Creator Studio
+  // previously rendered this as a seeded pseudo-random curve. generate_series
+  // zero-fills weeks with no sales so the chart doesn't just stop at the last
+  // week that happened to have a purchase.
+  const weeklySalesResult = await db.execute<{ week_start: Date; tickets_sold: number }>(sql`
+    select
+      gs.week_start as week_start,
+      coalesce(sum(tickets.quantity), 0)::int as tickets_sold
+    from generate_series(
+      date_trunc('week', now()) - interval '7 weeks',
+      date_trunc('week', now()),
+      interval '1 week'
+    ) as gs(week_start)
+    left join tickets
+      on date_trunc('week', tickets.purchased_at) = gs.week_start
+      and ${inArray(ticketsTable.eventId, eventIds)}
+      and tickets.status = 'confirmed'
+    group by gs.week_start
+    order by gs.week_start
+  `);
+  const weeklySales = weeklySalesResult.rows.map((r) => ({
+    weekStart: new Date(r.week_start).toISOString(),
+    ticketsSold: Number(r.tickets_sold),
+  }));
+
+  // Real per-city breakdown — replaces the previous fabricated "Audience"
+  // age-bracket donut, for which no such data (age, gender, location) is
+  // captured anywhere in the schema. City-of-event is real and meaningful.
+  const salesByCityRows = await db
+    .select({
+      city: eventsTable.city,
+      ticketsSold: sql<number>`coalesce(sum(${ticketsTable.quantity}), 0)::int`,
+    })
+    .from(ticketsTable)
+    .innerJoin(eventsTable, eq(ticketsTable.eventId, eventsTable.id))
+    .where(and(inArray(ticketsTable.eventId, eventIds), eq(ticketsTable.status, "confirmed")))
+    .groupBy(eventsTable.city)
+    .orderBy(sql`coalesce(sum(${ticketsTable.quantity}), 0) desc`)
+    .limit(6);
+  const salesByCity = salesByCityRows.map((r) => ({ city: r.city, ticketsSold: Number(r.ticketsSold) }));
+
+  res.json({ events: eventStats, totalRevenue, totalTicketsSold, liveEvents, weeklySales, salesByCity });
 });
 
 router.get("/:id", async (req: Request, res: Response) => {

@@ -217,11 +217,25 @@ export interface CreatedEventStats {
   currency: string;
 }
 
+export interface WeeklySalesPoint {
+  weekStart: string;
+  ticketsSold: number;
+}
+
+export interface CitySalesPoint {
+  city: string;
+  ticketsSold: number;
+}
+
 export interface CreatorAnalytics {
   events: CreatedEventStats[];
   totalRevenue: number;
   totalTicketsSold: number;
   liveEvents: number;
+  /** Real ticket sales for the last 8 weeks, bucketed by purchase date. Oldest first. */
+  weeklySales: WeeklySalesPoint[];
+  /** Real ticket sales grouped by event city, highest first. */
+  salesByCity: CitySalesPoint[];
 }
 
 export type CollectibleRarity =

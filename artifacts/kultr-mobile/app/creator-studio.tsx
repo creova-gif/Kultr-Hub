@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React from "react";
 import {
   Dimensions,
   Image,
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { EVENT_IMAGES } from "@/constants/data";
+import { useGetCreatorAnalytics, getGetCreatorAnalyticsQueryKey } from "@workspace/api-client-react";
 
 const { width } = Dimensions.get("window");
 const CHART_W = width - 64;
@@ -45,27 +46,6 @@ function buildAreaPath(data: number[], w: number, h: number, pad = 12): string {
   const step = w / (n.length - 1);
   const points = n.map((v, i) => `${i * step},${h - pad - v * (h - pad * 2)}`);
   return `M 0,${h} ${points.map((p, i) => (i === 0 ? `L ${p}` : `L ${p}`)).join(" ")} L ${w},${h} Z`;
-}
-
-function polarToCart(cx: number, cy: number, r: number, angleDeg: number) {
-  const rad = ((angleDeg - 90) * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-}
-
-interface DonutSegment { value: number; color: string; }
-
-function buildDonutPath(segments: DonutSegment[], cx: number, cy: number, r: number): string[] {
-  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
-  let angle = 0;
-  return segments.map((seg) => {
-    const sweep = (seg.value / total) * 358;
-    const start = polarToCart(cx, cy, r, angle);
-    const end = polarToCart(cx, cy, r, angle + sweep);
-    const large = sweep > 180 ? 1 : 0;
-    const d = `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y}`;
-    angle += sweep + 2;
-    return d;
-  });
 }
 
 // ── Bar Chart ────────────────────────────────────────────────────────────────
@@ -182,7 +162,11 @@ const statStyles = StyleSheet.create({
 export default function CreatorStudioScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { authUser, createdEvents, userCountry } = useApp();
+  const { authUser, authToken, createdEvents, userCountry } = useApp();
+
+  const { data: analytics } = useGetCreatorAnalytics({
+    query: { queryKey: getGetCreatorAnalyticsQueryKey(), enabled: !!authToken },
+  });
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 44) : insets.top;
 
@@ -200,45 +184,26 @@ export default function CreatorStudioScreen() {
     return `${symbol}${n}`;
   }
 
-  // Simulated weekly ticket sales data (last 8 weeks)
-  const salesData = useMemo(() => {
-    const seed = totalSold || 120;
-    return Array.from({ length: 8 }, (_, i) => {
-      const base = seed * (0.3 + i * 0.1);
-      const noise = ((seed * (i + 1)) % 50) - 25;
-      return Math.max(10, Math.round(base + noise));
-    });
-  }, [totalSold]);
+  // Real weekly ticket sales for the last 8 weeks, from actual purchase
+  // timestamps — GET /events/creator/analytics zero-fills weeks with no sales.
+  // Fall back to 8 zero-value weeks (not fewer/more points) while loading, so
+  // the chart's line-building math never divides by a zero-length span.
+  const hasWeeklySales = (analytics?.weeklySales.length ?? 0) > 0;
+  const weeklySales = hasWeeklySales
+    ? analytics!.weeklySales
+    : Array.from({ length: 8 }, () => ({ weekStart: "", ticketsSold: 0 }));
+  const salesData = weeklySales.map((w) => w.ticketsSold);
+  const weekLabels = weeklySales.map((w) =>
+    hasWeeklySales ? new Date(w.weekStart).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "",
+  );
 
-  const weekLabels = ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"];
-
-  // Revenue breakdown donut
-  const ticketRev = Math.round(totalRevenue * 0.707);
-  const merchRev = Math.round(totalRevenue * 0.184);
-  const donationRev = Math.round(totalRevenue * 0.097);
-  const otherRev = totalRevenue - ticketRev - merchRev - donationRev;
-
-  const revenueSegments: DonutSegment[] = [
-    { value: ticketRev, color: "#FF6B00" },
-    { value: merchRev, color: "#FFA726" },
-    { value: donationRev, color: "#FF8A50" },
-    { value: otherRev, color: "#4A3020" },
-  ];
-
-  // Audience demographics donut
-  const audienceSegments: DonutSegment[] = [
-    { value: 28, color: "#FF6B00" },
-    { value: 45, color: "#FFA726" },
-    { value: 17, color: "#FF8A50" },
-    { value: 10, color: "#4A3020" },
-  ];
-
-  const CX = 55, CY = 55, R = 42, SW = 14;
+  // Real per-city ticket sales, replacing what used to be a fabricated
+  // age-bracket "Audience" donut — no such demographic data exists anywhere
+  // in the schema to compute one from.
+  const salesByCity = analytics?.salesByCity ?? [];
 
   const lineD = buildLinePath(salesData, CHART_W - 32, CHART_H - 20);
   const areaD = buildAreaPath(salesData, CHART_W - 32, CHART_H - 20);
-  const revPaths = buildDonutPath(revenueSegments, CX, CY, R);
-  const audPaths = buildDonutPath(audienceSegments, CX, CY, R);
 
   const norm = normalise(salesData);
   const step = (CHART_W - 32) / (norm.length - 1);
@@ -327,11 +292,11 @@ export default function CreatorStudioScreen() {
             colors={colors}
           />
           <StatCard
-            label="Page Views"
-            value={`${(totalSold * 7).toLocaleString()}`}
-            trend="9.3%"
+            label="Avg. Ticket Price"
+            value={totalSold > 0 ? formatRevenue(Math.round(totalRevenue / totalSold)) : formatRevenue(0)}
+            trend="—"
             trendUp
-            icon="eye"
+            icon="tag"
             colors={colors}
           />
         </View>
@@ -388,68 +353,27 @@ export default function CreatorStudioScreen() {
         </Svg>
       </View>
 
-      {/* ── Donut Charts Row ── */}
-      <View style={styles.donutRow}>
-        {/* Revenue Breakdown */}
-        <View style={[styles.donutCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.chartTitle, { color: colors.foreground, marginBottom: 12 }]}>Revenue</Text>
-          <View style={styles.donutContent}>
-            <Svg width={110} height={110}>
-              {revPaths.map((d, i) => (
-                <Path key={i} d={d} stroke={revenueSegments[i].color} strokeWidth={SW} fill="none" strokeLinecap="round" />
-              ))}
-              <Circle cx={CX} cy={CY} r={R - SW / 2 - 2} fill={colors.card} />
-            </Svg>
-            <View style={styles.legend}>
-              {[
-                { label: "Tickets", pct: "70.7%", color: "#FF6B00" },
-                { label: "Merch", pct: "18.4%", color: "#FFA726" },
-                { label: "Donations", pct: "9.7%", color: "#FF8A50" },
-                { label: "Other", pct: "1.2%", color: "#4A3020" },
-              ].map((item) => (
-                <View key={item.label} style={styles.legendRow}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                  <Text style={[styles.legendLabel, { color: colors.mutedForeground }]}>{item.label}</Text>
-                  <Text style={[styles.legendPct, { color: colors.foreground }]}>{item.pct}</Text>
-                </View>
-              ))}
-            </View>
+      {/* ── Sales by City ── */}
+      {/* Real per-city ticket sales. The "Revenue" and "Audience" donuts this
+          screen used to show here were fabricated — a fixed 70.7/18.4/9.7/1.2%
+          split with no basis in any real revenue category, and a hardcoded
+          age-bracket breakdown for which no demographic data is ever captured
+          anywhere in the schema. City-of-event is real and meaningful. */}
+      {salesByCity.length > 0 && (
+        <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: colors.foreground }]}>Sales by City</Text>
+          </View>
+          <BarChart
+            data={salesByCity.map((c) => ({ label: c.city.slice(0, 8), value: c.ticketsSold }))}
+            color="#FF6B00"
+          />
+          <View style={styles.chartLegend}>
+            <View style={[styles.chartLegendDot, { backgroundColor: "#FF6B00" }]} />
+            <Text style={[styles.chartLegendText, { color: colors.mutedForeground }]}>Tickets sold per city</Text>
           </View>
         </View>
-
-        {/* Audience Demographics */}
-        <View style={[styles.donutCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.chartTitle, { color: colors.foreground, marginBottom: 12 }]}>Audience</Text>
-          <View style={styles.donutContent}>
-            <Svg width={110} height={110}>
-              {audPaths.map((d, i) => (
-                <Path key={i} d={d} stroke={audienceSegments[i].color} strokeWidth={SW} fill="none" strokeLinecap="round" />
-              ))}
-              <Circle cx={CX} cy={CY} r={R - SW / 2 - 2} fill={colors.card} />
-              <SvgText x={CX} y={CY - 4} fontSize={16} fontWeight="bold" fill={colors.foreground} textAnchor="middle">
-                {totalSold}
-              </SvgText>
-              <SvgText x={CX} y={CY + 10} fontSize={8} fill="#666" textAnchor="middle">
-                Total
-              </SvgText>
-            </Svg>
-            <View style={styles.legend}>
-              {[
-                { label: "18–24", pct: "28%", color: "#FF6B00" },
-                { label: "25–34", pct: "45%", color: "#FFA726" },
-                { label: "35–44", pct: "17%", color: "#FF8A50" },
-                { label: "45+", pct: "10%", color: "#4A3020" },
-              ].map((item) => (
-                <View key={item.label} style={styles.legendRow}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                  <Text style={[styles.legendLabel, { color: colors.mutedForeground }]}>{item.label}</Text>
-                  <Text style={[styles.legendPct, { color: colors.foreground }]}>{item.pct}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      </View>
+      )}
 
       {/* ── Revenue Chart ── */}
       {createdEvents.length > 0 && (

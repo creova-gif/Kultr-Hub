@@ -1064,7 +1064,7 @@ components:
 
     CreatorAnalytics:
       type: object
-      required: [events, totalRevenue, totalTicketsSold, liveEvents]
+      required: [events, totalRevenue, totalTicketsSold, liveEvents, weeklySales, salesByCity]
       properties:
         events:
           type: array
@@ -1075,6 +1075,35 @@ components:
         totalTicketsSold:
           type: integer
         liveEvents:
+          type: integer
+        weeklySales:
+          type: array
+          description: Real ticket sales for the last 8 weeks, bucketed by purchase date. Oldest first.
+          items:
+            $ref: "#/components/schemas/WeeklySalesPoint"
+        salesByCity:
+          type: array
+          description: Real ticket sales grouped by event city, highest first.
+          items:
+            $ref: "#/components/schemas/CitySalesPoint"
+
+    WeeklySalesPoint:
+      type: object
+      required: [weekStart, ticketsSold]
+      properties:
+        weekStart:
+          type: string
+          format: date-time
+        ticketsSold:
+          type: integer
+
+    CitySalesPoint:
+      type: object
+      required: [city, ticketsSold]
+      properties:
+        city:
+          type: string
+        ticketsSold:
           type: integer
 
     # ── GAMIFICATION ──────────────────────────────────────────────────────────

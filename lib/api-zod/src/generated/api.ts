@@ -242,6 +242,24 @@ export const GetCreatorAnalyticsResponse = zod.object({
   totalRevenue: zod.number(),
   totalTicketsSold: zod.number(),
   liveEvents: zod.number(),
+  weeklySales: zod
+    .array(
+      zod.object({
+        weekStart: zod.coerce.date(),
+        ticketsSold: zod.number(),
+      }),
+    )
+    .describe(
+      "Real ticket sales for the last 8 weeks, bucketed by purchase date. Oldest first.",
+    ),
+  salesByCity: zod
+    .array(
+      zod.object({
+        city: zod.string(),
+        ticketsSold: zod.number(),
+      }),
+    )
+    .describe("Real ticket sales grouped by event city, highest first."),
 });
 
 /**
