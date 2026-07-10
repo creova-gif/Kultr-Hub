@@ -11,6 +11,10 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   countryCode: text("country_code").notNull().default("KE"),
   isCreator: boolean("is_creator").notNull().default(false),
+  // No self-serve path to grant this — set directly in the database.
+  // Gates the moderation kill-switch (force any event to cancelled/ended)
+  // until a real admin console exists.
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

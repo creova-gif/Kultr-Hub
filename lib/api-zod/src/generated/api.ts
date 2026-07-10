@@ -263,6 +263,59 @@ export const GetCreatorAnalyticsResponse = zod.object({
 });
 
 /**
+ * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ */
+export const UpdateEventStatusParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateEventStatusBody = zod.object({
+  status: zod.enum(["live", "cancelled", "ended"]),
+});
+
+export const UpdateEventStatusResponse = zod.object({
+  id: zod.string(),
+  status: zod.enum(["draft", "live", "cancelled", "ended"]),
+});
+
+/**
+ * @summary List every event regardless of status (admin only)
+ */
+export const listAllEventsAdminQueryLimitDefault = 50;
+export const listAllEventsAdminQueryOffsetDefault = 0;
+
+export const ListAllEventsAdminQueryParams = zod.object({
+  limit: zod.coerce.number().default(listAllEventsAdminQueryLimitDefault),
+  offset: zod.coerce.number().default(listAllEventsAdminQueryOffsetDefault),
+});
+
+export const ListAllEventsAdminResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      subtitle: zod.string().nullish(),
+      category: zod.string(),
+      venue: zod.string(),
+      city: zod.string(),
+      country: zod.string(),
+      countryCode: zod.string(),
+      eventDate: zod.coerce.date(),
+      imageUrl: zod.string().nullish(),
+      imageKey: zod.string().nullish(),
+      featured: zod.boolean(),
+      tags: zod.array(zod.string()).nullish(),
+      minPrice: zod.number(),
+      currency: zod.string(),
+      status: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  limit: zod.number(),
+  offset: zod.number(),
+});
+
+/**
  * @summary Get a single event by ID
  */
 export const GetEventParams = zod.object({

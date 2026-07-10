@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { type CreatedEvent, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { useCreateEvent } from "@workspace/api-client-react";
+import { useCreateEvent, useUpdateEventStatus } from "@workspace/api-client-react";
 
 const LOGO_ICON = require("@/assets/images/logo-icon.png");
 
@@ -37,6 +37,7 @@ export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   const { addCreatedEvent, userCountry, authToken } = useApp();
   const { mutateAsync: createEventApi } = useCreateEvent();
+  const { mutateAsync: updateEventStatusApi } = useUpdateEventStatus();
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 44) : insets.top;
   const botPad = Platform.OS === "web" ? Math.max(insets.bottom, 24) : insets.bottom;
@@ -110,8 +111,9 @@ export default function CreateEventScreen() {
         ticketTypes.push({ name: "General", price, currency: userCountry.currencyCode, totalQuantity: 500 });
       }
 
+      let created: { id: string } | undefined;
       try {
-        await createEventApi({
+        created = await createEventApi({
           data: {
             title: title.trim(),
             description: description.trim(),
@@ -139,6 +141,21 @@ export default function CreateEventScreen() {
         setPublishing(false);
         setPublished(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        return;
+      }
+
+      // The server always creates events as "draft" — this is the actual
+      // publish step. Without it the event would never appear anywhere
+      // public despite this screen telling the creator it's live.
+      try {
+        await updateEventStatusApi({ id: created.id, data: { status: "live" } });
+      } catch (err) {
+        setPublishing(false);
+        Alert.alert(
+          "Saved as draft",
+          "Your event was created but couldn't be published yet. Try publishing it again from your event list.",
+          [{ text: "OK", onPress: () => router.replace("/(tabs)/profile") }],
+        );
         return;
       }
     } else {

@@ -15,6 +15,13 @@
       "when": 1783718385003,
       "tag": "0001_polite_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783719541040,
+      "tag": "0002_new_stardust",
+      "breakpoints": true
     }
   ]
 }

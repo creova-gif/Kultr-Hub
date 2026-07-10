@@ -238,6 +238,34 @@ export interface CreatorAnalytics {
   salesByCity: CitySalesPoint[];
 }
 
+export type UpdateEventStatusRequestStatus =
+  (typeof UpdateEventStatusRequestStatus)[keyof typeof UpdateEventStatusRequestStatus];
+
+export const UpdateEventStatusRequestStatus = {
+  live: "live",
+  cancelled: "cancelled",
+  ended: "ended",
+} as const;
+
+export interface UpdateEventStatusRequest {
+  status: UpdateEventStatusRequestStatus;
+}
+
+export type EventStatusResponseStatus =
+  (typeof EventStatusResponseStatus)[keyof typeof EventStatusResponseStatus];
+
+export const EventStatusResponseStatus = {
+  draft: "draft",
+  live: "live",
+  cancelled: "cancelled",
+  ended: "ended",
+} as const;
+
+export interface EventStatusResponse {
+  id: string;
+  status: EventStatusResponseStatus;
+}
+
 export type CollectibleRarity =
   (typeof CollectibleRarity)[keyof typeof CollectibleRarity];
 
@@ -409,6 +437,11 @@ export type ListEventsParams = {
   city?: string;
   countryCode?: string;
   featured?: boolean;
+  limit?: number;
+  offset?: number;
+};
+
+export type ListAllEventsAdminParams = {
   limit?: number;
   offset?: number;
 };

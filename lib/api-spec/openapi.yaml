@@ -313,6 +313,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /events/{id}/status:
+    patch:
+      operationId: updateEventStatus
+      tags: [events]
+      summary: >-
+        Publish, cancel, or end an event. Callable by the event's own
+        creator (draft→live, or cancel/end their own event) or by an admin
+        (any transition on any event, at any time — the moderation
+        kill-switch).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventStatusRequest"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventStatusResponse"
+        "403":
+          description: Not the event's creator and not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Event is in a terminal status (cancelled/ended) and the caller is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /events/admin/all:
+    get:
+      operationId: listAllEventsAdmin
+      tags: [events]
+      summary: List every event regardless of status (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: All events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventListResponse"
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /events/{id}:
     get:
       operationId: getEvent
@@ -1105,6 +1180,24 @@ components:
           type: string
         ticketsSold:
           type: integer
+
+    UpdateEventStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [live, cancelled, ended]
+
+    EventStatusResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [draft, live, cancelled, ended]
 
     # ── GAMIFICATION ──────────────────────────────────────────────────────────
     CollectibleRarity:

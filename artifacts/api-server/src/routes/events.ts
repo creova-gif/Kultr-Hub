@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, sql, inArray, ilike, or } from "drizzle-orm";
-import { db, eventsTable, ticketTypesTable, ticketsTable } from "@workspace/db";
-import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
+import { db, eventsTable, ticketTypesTable, ticketsTable, usersTable } from "@workspace/db";
+import { requireAuth, requireAdmin, type AuthedRequest } from "../middleware/auth.js";
 import type { Request, Response } from "express";
 
 const router = Router();
@@ -237,6 +237,41 @@ router.get("/creator/analytics", requireAuth, async (req: Request, res: Response
   res.json({ events: eventStats, totalRevenue, totalTicketsSold, liveEvents, weeklySales, salesByCity });
 });
 
+/**
+ * GET /api/events/admin/all — every event regardless of status, newest
+ * first, so an admin can find something to moderate. Registered before the
+ * generic /:id route below so "admin" is never matched as an event id.
+ */
+router.get("/admin/all", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { limit = "50", offset = "0" } = req.query as Record<string, string>;
+
+  const [events, [{ count }]] = await Promise.all([
+    db.select().from(eventsTable)
+      .orderBy(desc(eventsTable.createdAt))
+      .limit(parseInt(limit))
+      .offset(parseInt(offset)),
+    db.select({ count: sql<number>`count(*)::int` }).from(eventsTable),
+  ]);
+
+  const eventIds = events.map((e) => e.id);
+  const allTicketTypes = eventIds.length > 0
+    ? await db.select().from(ticketTypesTable).where(inArray(ticketTypesTable.eventId, eventIds))
+    : [];
+  const byEvent = new Map<string, typeof ticketTypesTable.$inferSelect[]>();
+  for (const tt of allTicketTypes) {
+    const arr = byEvent.get(tt.eventId) ?? [];
+    arr.push(tt);
+    byEvent.set(tt.eventId, arr);
+  }
+
+  res.json({
+    events: events.map((e) => ({ ...toEventSummary(e, byEvent.get(e.id) ?? []), creatorId: e.creatorId })),
+    total: count,
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  });
+});
+
 router.get("/:id", async (req: Request, res: Response) => {
   const id = String(req.params.id);
 
@@ -334,6 +369,58 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       available: tt.totalQuantity,
     })),
   });
+});
+
+const STATUS_TARGETS = ["live", "cancelled", "ended"] as const;
+type StatusTarget = (typeof STATUS_TARGETS)[number];
+
+/**
+ * PATCH /api/events/:id/status
+ *
+ * Before this route existed there was no way for ANY event — including ones
+ * created through the app's own create-event flow, which always inserts as
+ * "draft" — to ever become publicly visible; only hand-seeded demo data was
+ * ever "live". This closes that gap while also closing the broken-access-
+ * control one: creators may only move their OWN event, and only through
+ * sensible transitions; an admin may force ANY event to cancelled/ended at
+ * any time regardless of its current status — the moderation kill-switch a
+ * platform with zero organizer verification needs before it can safely
+ * accept public event creation.
+ */
+router.patch("/:id/status", requireAuth, async (req: Request, res: Response) => {
+  const authed = req as AuthedRequest;
+  const id = String(req.params.id);
+  const { status } = req.body as { status?: string };
+
+  if (!status || !STATUS_TARGETS.includes(status as StatusTarget)) {
+    res.status(400).json({ message: `status must be one of: ${STATUS_TARGETS.join(", ")}` });
+    return;
+  }
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
+  if (!event) { res.status(404).json({ message: "Event not found" }); return; }
+
+  const [actor] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, authed.userId)).limit(1);
+  const isAdmin = actor?.isAdmin ?? false;
+
+  if (!isAdmin) {
+    if (event.creatorId !== authed.userId) {
+      res.status(403).json({ message: "You do not have permission to change this event." });
+      return;
+    }
+    if (event.status === "cancelled" || event.status === "ended") {
+      res.status(409).json({ message: "This event's status can no longer be changed." });
+      return;
+    }
+  }
+
+  const [updated] = await db
+    .update(eventsTable)
+    .set({ status: status as StatusTarget, updatedAt: new Date() })
+    .where(eq(eventsTable.id, id))
+    .returning();
+
+  res.json({ id: updated.id, status: updated.status });
 });
 
 export default router;

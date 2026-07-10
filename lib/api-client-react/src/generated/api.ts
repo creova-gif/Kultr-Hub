@@ -25,11 +25,13 @@ import type {
   ErrorResponse,
   EventDetail,
   EventListResponse,
+  EventStatusResponse,
   FxRates,
   GamificationProfile,
   GetFxRatesParams,
   HealthStatus,
   LedgerResponse,
+  ListAllEventsAdminParams,
   ListEventsParams,
   LoginRequest,
   OtpRequest,
@@ -45,6 +47,7 @@ import type {
   TicketListResponse,
   UnlockPerkRequest,
   UnlockPerkResponse,
+  UpdateEventStatusRequest,
   UserDataExport,
   UserProfile,
 } from "./api.schemas";
@@ -1096,6 +1099,190 @@ export function useGetCreatorAnalytics<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCreatorAnalyticsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ */
+export const getUpdateEventStatusUrl = (id: string) => {
+  return `/api/events/${id}/status`;
+};
+
+export const updateEventStatus = async (
+  id: string,
+  updateEventStatusRequest: UpdateEventStatusRequest,
+  options?: RequestInit,
+): Promise<EventStatusResponse> => {
+  return customFetch<EventStatusResponse>(getUpdateEventStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateEventStatusRequest),
+  });
+};
+
+export const getUpdateEventStatusMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEventStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateEventStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateEventStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateEventStatusRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateEventStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateEventStatus>>,
+    { id: string; data: BodyType<UpdateEventStatusRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateEventStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateEventStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateEventStatus>>
+>;
+export type UpdateEventStatusMutationBody = BodyType<UpdateEventStatusRequest>;
+export type UpdateEventStatusMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ */
+export const useUpdateEventStatus = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEventStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateEventStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateEventStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateEventStatusRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateEventStatusMutationOptions(options));
+};
+
+/**
+ * @summary List every event regardless of status (admin only)
+ */
+export const getListAllEventsAdminUrl = (params?: ListAllEventsAdminParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/events/admin/all?${stringifiedParams}`
+    : `/api/events/admin/all`;
+};
+
+export const listAllEventsAdmin = async (
+  params?: ListAllEventsAdminParams,
+  options?: RequestInit,
+): Promise<EventListResponse> => {
+  return customFetch<EventListResponse>(getListAllEventsAdminUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllEventsAdminQueryKey = (
+  params?: ListAllEventsAdminParams,
+) => {
+  return [`/api/events/admin/all`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAllEventsAdminQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllEventsAdmin>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListAllEventsAdminParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllEventsAdmin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAllEventsAdminQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAllEventsAdmin>>
+  > = ({ signal }) => listAllEventsAdmin(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllEventsAdmin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllEventsAdminQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllEventsAdmin>>
+>;
+export type ListAllEventsAdminQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List every event regardless of status (admin only)
+ */
+
+export function useListAllEventsAdmin<
+  TData = Awaited<ReturnType<typeof listAllEventsAdmin>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListAllEventsAdminParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllEventsAdmin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllEventsAdminQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
