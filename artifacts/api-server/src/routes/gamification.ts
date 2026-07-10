@@ -350,18 +350,21 @@ router.get("/wallet/ledger", requireAuth, async (req: Request, res: Response) =>
 
 /* ── POST /pass/activate ──────────────────────────────────────────────────
  * Grant / refresh the KULTR PASS entitlement. Stub for billing: until recurring
- * payments are wired, this simply flags the entitlement and sets the multiplier.
+ * payments are wired, this simply flags the entitlement at the fixed default
+ * multiplier — never a client-supplied one, which would let any user set an
+ * arbitrary earn-rate on the KULTROIN ledger for free.
  * ───────────────────────────────────────────────────────────────────────── */
+const KULTR_PASS_MULTIPLIER = "1.50";
+
 router.post("/pass/activate", requireAuth, async (req: Request, res: Response) => {
   const { userId } = req as AuthedRequest;
-  const { multiplier = "1.50" } = req.body as { multiplier?: string };
 
   const [sub] = await db
     .insert(kultrPassSubscriptionsTable)
-    .values({ userId, multiplier: String(multiplier), active: true })
+    .values({ userId, multiplier: KULTR_PASS_MULTIPLIER, active: true })
     .onConflictDoUpdate({
       target: kultrPassSubscriptionsTable.userId,
-      set: { active: true, multiplier: String(multiplier), startedAt: new Date() },
+      set: { active: true, multiplier: KULTR_PASS_MULTIPLIER, startedAt: new Date() },
     })
     .returning();
 

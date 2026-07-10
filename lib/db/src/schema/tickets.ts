@@ -6,6 +6,7 @@ import {
   integer,
   numeric,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -19,29 +20,38 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
   "refunded",
 ]);
 
-export const ticketsTable = pgTable("tickets", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  ticketNumber: text("ticket_number").notNull().unique(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-  eventId: uuid("event_id")
-    .notNull()
-    .references(() => eventsTable.id, { onDelete: "cascade" }),
-  ticketTypeId: uuid("ticket_type_id")
-    .notNull()
-    .references(() => ticketTypesTable.id, { onDelete: "cascade" }),
-  quantity: integer("quantity").notNull().default(1),
-  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
-  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
-  currency: text("currency").notNull(),
-  status: ticketStatusEnum("status").notNull().default("confirmed"),
-  // Unique so a single payment can only ever issue one ticket (idempotency guard).
-  // NULLs are allowed and non-conflicting, so genuinely-free tickets are unaffected.
-  paymentReference: text("payment_reference").unique(),
-  paymentProvider: text("payment_provider"),
-  purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const ticketsTable = pgTable(
+  "tickets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketNumber: text("ticket_number").notNull().unique(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => eventsTable.id, { onDelete: "cascade" }),
+    ticketTypeId: uuid("ticket_type_id")
+      .notNull()
+      .references(() => ticketTypesTable.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+    totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull(),
+    status: ticketStatusEnum("status").notNull().default("confirmed"),
+    // Unique so a single payment can only ever issue one ticket (idempotency guard).
+    // NULLs are allowed and non-conflicting, so genuinely-free tickets are unaffected.
+    paymentReference: text("payment_reference").unique(),
+    paymentProvider: text("payment_provider"),
+    purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // GET /api/tickets is a per-user lookup ordered by purchase date — the hottest ticket read.
+    index("tickets_user_id_purchased_at_idx").on(table.userId, table.purchasedAt),
+    index("tickets_event_id_idx").on(table.eventId),
+    index("tickets_ticket_type_id_idx").on(table.ticketTypeId),
+  ],
+);
 
 export const insertTicketSchema = createInsertSchema(ticketsTable).omit({
   id: true,
