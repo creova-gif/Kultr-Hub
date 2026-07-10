@@ -87,7 +87,9 @@ export async function initiateMoMoRequest(
     },
     body: JSON.stringify({
       amount: String(Math.ceil(params.amount)),
-      currency: MOMO_CURRENCY,
+      // Charge in the ticket's own currency. In sandbox MoMo only accepts EUR,
+      // so fall back to MOMO_CURRENCY there; in production always use the real one.
+      currency: ENVIRONMENT === "production" ? params.currency : MOMO_CURRENCY,
       externalId: params.externalId,
       payer: {
         partyIdType: "MSISDN",

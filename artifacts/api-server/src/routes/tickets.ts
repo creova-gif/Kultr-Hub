@@ -1,15 +1,12 @@
 import { Router } from "express";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, ticketsTable, ticketTypesTable, eventsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
+import { issueTicket, validateQuantity, TicketIssueError } from "../lib/issue.js";
 import type { Request, Response } from "express";
 
 const router = Router();
-
-function generateTicketNumber(): string {
-  return `KTR-${nanoid(8).toUpperCase()}`;
-}
 
 async function buildTicketDetail(ticket: typeof ticketsTable.$inferSelect) {
   const [ticketType] = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.id, ticket.ticketTypeId)).limit(1);
@@ -62,16 +59,30 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   res.json({ tickets: details, total: details.length });
 });
 
+/**
+ * POST /api/tickets — reserve a FREE ticket (RSVP).
+ *
+ * This endpoint issues confirmed tickets with no payment step, so it is strictly
+ * limited to genuinely free (price 0) ticket types. Any paid tier MUST go through
+ * the payments flow (/api/payments/*), which only issues after a verified charge.
+ */
 router.post("/", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
-  const { eventId, ticketTypeId, quantity = 1 } = req.body as {
+  const { eventId, ticketTypeId } = req.body as {
     eventId: string;
     ticketTypeId: string;
-    quantity?: number;
   };
 
   if (!eventId || !ticketTypeId) {
     res.status(400).json({ message: "eventId and ticketTypeId are required" });
+    return;
+  }
+
+  let quantity: number;
+  try {
+    quantity = validateQuantity((req.body as { quantity?: unknown }).quantity ?? 1);
+  } catch (err) {
+    res.status(400).json({ message: err instanceof TicketIssueError ? err.message : "Invalid quantity" });
     return;
   }
 
@@ -83,35 +94,34 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
-  const available = ticketType.totalQuantity - ticketType.soldQuantity;
-  if (available < quantity) {
-    res.status(400).json({ message: `Only ${available} tickets remaining` });
+  const unitPrice = Number(ticketType.price);
+  if (unitPrice > 0) {
+    res.status(402).json({
+      message: "This ticket type requires payment. Use the checkout flow to purchase.",
+    });
     return;
   }
 
-  const unitPrice = Number(ticketType.price);
-  const totalAmount = unitPrice * quantity;
-
-  const [ticket] = await db.transaction(async (tx) => {
-    await tx.update(ticketTypesTable)
-      .set({ soldQuantity: sql`${ticketTypesTable.soldQuantity} + ${quantity}` })
-      .where(eq(ticketTypesTable.id, ticketTypeId));
-
-    return tx.insert(ticketsTable).values({
-      ticketNumber: generateTicketNumber(),
+  try {
+    const { ticket } = await issueTicket({
       userId: authed.userId,
       eventId,
       ticketTypeId,
       quantity,
-      unitPrice: String(unitPrice),
-      totalAmount: String(totalAmount),
+      unitPrice,
       currency: ticketType.currency,
-      status: "confirmed",
-    }).returning();
-  });
-
-  const detail = await buildTicketDetail(ticket);
-  res.status(201).json(detail);
+      paymentReference: `free_${nanoid(16)}`,
+      paymentProvider: "free",
+    });
+    const detail = await buildTicketDetail(ticket);
+    res.status(201).json(detail);
+  } catch (err) {
+    if (err instanceof TicketIssueError) {
+      res.status(400).json({ message: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.get("/:id", requireAuth, async (req: Request, res: Response) => {

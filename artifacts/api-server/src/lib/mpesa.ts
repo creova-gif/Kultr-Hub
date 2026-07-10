@@ -28,6 +28,10 @@ function isConfigured(): boolean {
   );
 }
 
+export function isMpesaConfigured(): boolean {
+  return isConfigured();
+}
+
 async function getOAuthToken(): Promise<string> {
   const key = process.env.MPESA_CONSUMER_KEY!;
   const secret = process.env.MPESA_CONSUMER_SECRET!;

@@ -1,6 +1,10 @@
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY ?? "";
 const BASE_URL = "https://api.paystack.co";
 
+export function isPaystackConfigured(): boolean {
+  return Boolean(PAYSTACK_SECRET);
+}
+
 interface PaystackInitResponse {
   status: boolean;
   message: string;

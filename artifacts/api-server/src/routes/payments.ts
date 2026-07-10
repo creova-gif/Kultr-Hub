@@ -1,12 +1,14 @@
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, ticketsTable, ticketTypesTable, eventsTable, usersTable } from "@workspace/db";
+import { db, ticketTypesTable, eventsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
-import { initializePayment, verifyPayment } from "../lib/paystack.js";
-import { initiateStkPush, queryStkPush } from "../lib/mpesa.js";
-import { initiateMoMoRequest, getMoMoPaymentStatus } from "../lib/mtn-momo.js";
+import { initializePayment, verifyPayment, isPaystackConfigured } from "../lib/paystack.js";
+import { initiateStkPush, queryStkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { initiateMoMoRequest, getMoMoPaymentStatus, isMoMoConfigured } from "../lib/mtn-momo.js";
 import { normalizeMsisdn } from "../lib/phone.js";
+import { simulationAllowed } from "../lib/simulation.js";
+import { issueTicket, validateQuantity, TicketIssueError } from "../lib/issue.js";
 import type { Request, Response } from "express";
 
 const router = Router();
@@ -17,12 +19,17 @@ function toCurrencyKobo(amount: number, currency: string): number {
   return Math.round(amount * 100);
 }
 
-function generateTicketNumber(): string {
-  return `KTR-${nanoid(8).toUpperCase()}`;
-}
-
 function generatePaymentRef(): string {
   return `kultr_${nanoid(16)}`;
+}
+
+/** Translate a TicketIssueError into an HTTP response; returns true if handled. */
+function handleIssueError(err: unknown, res: Response): boolean {
+  if (err instanceof TicketIssueError) {
+    res.status(err.code === "sold_out" ? 409 : 400).json({ message: err.message });
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -109,12 +116,10 @@ router.post("/init", requireAuth, async (req: Request, res: Response) => {
  */
 router.post("/verify", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
-  const { reference, simulated, eventId, ticketTypeId, quantity = 1 } = req.body as {
+  const { reference, eventId, ticketTypeId } = req.body as {
     reference: string;
-    simulated?: boolean;
     eventId: string;
     ticketTypeId: string;
-    quantity?: number;
   };
 
   if (!reference || !eventId || !ticketTypeId) {
@@ -122,59 +127,67 @@ router.post("/verify", requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
+  let quantity: number;
+  try {
+    quantity = validateQuantity((req.body as { quantity?: unknown }).quantity ?? 1);
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
+
   const [ticketType] = await db.select().from(ticketTypesTable)
     .where(eq(ticketTypesTable.id, ticketTypeId)).limit(1);
 
   if (!ticketType) { res.status(404).json({ message: "Ticket type not found" }); return; }
 
-  // For dev/demo: skip Paystack verification when simulated
-  let verified = simulated === true;
-  if (!verified) {
-    const result = await verifyPayment(reference);
-    verified = result?.success === true;
-  }
-
-  if (!verified) {
-    res.status(402).json({ message: "Payment could not be verified" });
-    return;
-  }
-
-  const available = ticketType.totalQuantity - ticketType.soldQuantity;
-  if (available < quantity) {
-    res.status(400).json({ message: `Only ${available} ticket(s) remaining` });
-    return;
-  }
-
   const unitPrice = Number(ticketType.price);
   const totalAmount = unitPrice * quantity;
 
-  const [ticket] = await db.transaction(async (tx) => {
-    await tx.update(ticketTypesTable)
-      .set({ soldQuantity: sql`${ticketTypesTable.soldQuantity} + ${quantity}` })
-      .where(eq(ticketTypesTable.id, ticketTypeId));
+  // Simulation is a server-side decision only — never trust a client flag.
+  const allowSimulation = simulationAllowed(isPaystackConfigured());
 
-    return tx.insert(ticketsTable).values({
-      ticketNumber: generateTicketNumber(),
+  if (!allowSimulation) {
+    const result = await verifyPayment(reference);
+    if (!result?.success) {
+      res.status(402).json({ message: "Payment could not be verified" });
+      return;
+    }
+    // Bind the charge to what we are about to issue: amount, currency and buyer
+    // must all match, otherwise this is an amount/tier/quantity tampering attempt.
+    const expectedKobo = toCurrencyKobo(totalAmount, ticketType.currency);
+    if (result.amount !== expectedKobo || result.currency !== ticketType.currency) {
+      res.status(400).json({ message: "Payment amount does not match the requested ticket." });
+      return;
+    }
+    const metaUserId = (result.metadata as { userId?: string } | undefined)?.userId;
+    if (metaUserId && metaUserId !== authed.userId) {
+      res.status(403).json({ message: "This payment belongs to a different account." });
+      return;
+    }
+  }
+
+  try {
+    const { ticket } = await issueTicket({
       userId: authed.userId,
       eventId,
       ticketTypeId,
       quantity,
-      unitPrice: String(unitPrice),
-      totalAmount: String(totalAmount),
+      unitPrice,
       currency: ticketType.currency,
-      status: "confirmed",
       paymentReference: reference,
-      paymentProvider: simulated ? "simulated" : "paystack",
-    }).returning();
-  });
-
-  res.status(201).json({
-    ticketId: ticket.id,
-    ticketNumber: ticket.ticketNumber,
-    status: ticket.status,
-    totalAmount,
-    currency: ticketType.currency,
-  });
+      paymentProvider: allowSimulation ? "simulated" : "paystack",
+    });
+    res.status(201).json({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      status: ticket.status,
+      totalAmount,
+      currency: ticketType.currency,
+    });
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
 });
 
 /**
@@ -195,48 +208,55 @@ router.get("/callback", async (req: Request, res: Response) => {
   }
 
   const { metadata } = result;
-  const { userId, eventId, ticketTypeId, quantity } = metadata as {
+  const { userId, eventId, ticketTypeId, quantity: rawQuantity } = metadata as {
     userId: string;
     eventId: string;
     ticketTypeId: string;
     quantity: number;
   };
 
+  let quantity: number;
+  try {
+    quantity = validateQuantity(rawQuantity);
+  } catch {
+    res.redirect(`${appCallback}?status=failed&ref=${ref}`);
+    return;
+  }
+
   const [ticketType] = await db.select().from(ticketTypesTable)
     .where(eq(ticketTypesTable.id, ticketTypeId)).limit(1);
 
   if (!ticketType) { res.redirect(`${appCallback}?status=failed&ref=${ref}`); return; }
 
-  const available = ticketType.totalQuantity - ticketType.soldQuantity;
-  if (available < quantity) {
-    res.redirect(`${appCallback}?status=sold_out&ref=${ref}`);
-    return;
-  }
-
   const unitPrice = Number(ticketType.price);
   const totalAmount = unitPrice * quantity;
 
-  const [ticket] = await db.transaction(async (tx) => {
-    await tx.update(ticketTypesTable)
-      .set({ soldQuantity: sql`${ticketTypesTable.soldQuantity} + ${quantity}` })
-      .where(eq(ticketTypesTable.id, ticketTypeId));
+  // Bind the verified charge to the ticket being issued.
+  const expectedKobo = toCurrencyKobo(totalAmount, ticketType.currency);
+  if (result.amount !== expectedKobo || result.currency !== ticketType.currency) {
+    res.redirect(`${appCallback}?status=failed&ref=${ref}`);
+    return;
+  }
 
-    return tx.insert(ticketsTable).values({
-      ticketNumber: generateTicketNumber(),
+  try {
+    const { ticket } = await issueTicket({
       userId,
       eventId,
       ticketTypeId,
       quantity,
-      unitPrice: String(unitPrice),
-      totalAmount: String(totalAmount),
+      unitPrice,
       currency: ticketType.currency,
-      status: "confirmed",
       paymentReference: ref,
       paymentProvider: "paystack",
-    }).returning();
-  });
-
-  res.redirect(`${appCallback}?status=success&ticketId=${ticket.id}&ref=${ref}`);
+    });
+    res.redirect(`${appCallback}?status=success&ticketId=${ticket.id}&ref=${ref}`);
+  } catch (err) {
+    if (err instanceof TicketIssueError && err.code === "sold_out") {
+      res.redirect(`${appCallback}?status=sold_out&ref=${ref}`);
+      return;
+    }
+    throw err;
+  }
 });
 
 /**
@@ -330,13 +350,11 @@ router.post("/mpesa/stk-push", requireAuth, async (req: Request, res: Response) 
  */
 router.post("/mpesa/verify", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
-  const { checkoutRequestId, reference, simulated, eventId, ticketTypeId, quantity = 1 } = req.body as {
+  const { checkoutRequestId, reference, eventId, ticketTypeId } = req.body as {
     checkoutRequestId: string;
     reference: string;
-    simulated?: boolean;
     eventId: string;
     ticketTypeId: string;
-    quantity?: number;
   };
 
   if (!reference || !eventId || !ticketTypeId) {
@@ -344,12 +362,21 @@ router.post("/mpesa/verify", requireAuth, async (req: Request, res: Response) =>
     return;
   }
 
+  let quantity: number;
+  try {
+    quantity = validateQuantity((req.body as { quantity?: unknown }).quantity ?? 1);
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
+
   const [ticketType] = await db.select().from(ticketTypesTable)
     .where(eq(ticketTypesTable.id, ticketTypeId)).limit(1);
 
   if (!ticketType) { res.status(404).json({ message: "Ticket type not found" }); return; }
 
-  let paid = simulated === true;
+  const allowSimulation = simulationAllowed(isMpesaConfigured());
+  let paid = allowSimulation;
 
   if (!paid && checkoutRequestId) {
     const status = await queryStkPush(checkoutRequestId);
@@ -361,42 +388,31 @@ router.post("/mpesa/verify", requireAuth, async (req: Request, res: Response) =>
     return;
   }
 
-  const available = ticketType.totalQuantity - ticketType.soldQuantity;
-  if (available < quantity) {
-    res.status(400).json({ message: `Only ${available} ticket(s) remaining` });
-    return;
-  }
-
   const unitPrice = Number(ticketType.price);
   const totalAmount = unitPrice * quantity;
 
-  const [ticket] = await db.transaction(async (tx) => {
-    await tx.update(ticketTypesTable)
-      .set({ soldQuantity: sql`${ticketTypesTable.soldQuantity} + ${quantity}` })
-      .where(eq(ticketTypesTable.id, ticketTypeId));
-
-    return tx.insert(ticketsTable).values({
-      ticketNumber: generateTicketNumber(),
+  try {
+    const { ticket } = await issueTicket({
       userId: authed.userId,
       eventId,
       ticketTypeId,
       quantity,
-      unitPrice: String(unitPrice),
-      totalAmount: String(totalAmount),
+      unitPrice,
       currency: ticketType.currency,
-      status: "confirmed",
       paymentReference: reference,
-      paymentProvider: simulated ? "mpesa_simulated" : "mpesa",
-    }).returning();
-  });
-
-  res.status(201).json({
-    ticketId: ticket.id,
-    ticketNumber: ticket.ticketNumber,
-    status: ticket.status,
-    totalAmount,
-    currency: ticketType.currency,
-  });
+      paymentProvider: allowSimulation ? "mpesa_simulated" : "mpesa",
+    });
+    res.status(201).json({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      status: ticket.status,
+      totalAmount,
+      currency: ticketType.currency,
+    });
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
 });
 
 /**
@@ -521,13 +537,11 @@ router.post("/momo/request", requireAuth, async (req: Request, res: Response) =>
  */
 router.post("/momo/verify", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
-  const { referenceId, reference, simulated, eventId, ticketTypeId, quantity = 1 } = req.body as {
+  const { referenceId, reference, eventId, ticketTypeId } = req.body as {
     referenceId: string;
     reference: string;
-    simulated?: boolean;
     eventId: string;
     ticketTypeId: string;
-    quantity?: number;
   };
 
   if (!referenceId || !reference || !eventId || !ticketTypeId) {
@@ -535,12 +549,21 @@ router.post("/momo/verify", requireAuth, async (req: Request, res: Response) => 
     return;
   }
 
+  let quantity: number;
+  try {
+    quantity = validateQuantity((req.body as { quantity?: unknown }).quantity ?? 1);
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
+
   const [ticketType] = await db.select().from(ticketTypesTable)
     .where(eq(ticketTypesTable.id, ticketTypeId)).limit(1);
 
   if (!ticketType) { res.status(404).json({ message: "Ticket type not found" }); return; }
 
-  let paid = simulated === true;
+  const allowSimulation = simulationAllowed(isMoMoConfigured());
+  let paid = allowSimulation;
 
   if (!paid) {
     const status = await getMoMoPaymentStatus(referenceId);
@@ -556,42 +579,31 @@ router.post("/momo/verify", requireAuth, async (req: Request, res: Response) => 
     return;
   }
 
-  const available = ticketType.totalQuantity - ticketType.soldQuantity;
-  if (available < quantity) {
-    res.status(400).json({ message: `Only ${available} ticket(s) remaining` });
-    return;
-  }
-
   const unitPrice = Number(ticketType.price);
   const totalAmount = unitPrice * quantity;
 
-  const [ticket] = await db.transaction(async (tx) => {
-    await tx.update(ticketTypesTable)
-      .set({ soldQuantity: sql`${ticketTypesTable.soldQuantity} + ${quantity}` })
-      .where(eq(ticketTypesTable.id, ticketTypeId));
-
-    return tx.insert(ticketsTable).values({
-      ticketNumber: generateTicketNumber(),
+  try {
+    const { ticket } = await issueTicket({
       userId: authed.userId,
       eventId,
       ticketTypeId,
       quantity,
-      unitPrice: String(unitPrice),
-      totalAmount: String(totalAmount),
+      unitPrice,
       currency: ticketType.currency,
-      status: "confirmed",
       paymentReference: reference,
-      paymentProvider: simulated ? "momo_simulated" : "mtn_momo",
-    }).returning();
-  });
-
-  res.status(201).json({
-    ticketId: ticket.id,
-    ticketNumber: ticket.ticketNumber,
-    status: ticket.status,
-    totalAmount,
-    currency: ticketType.currency,
-  });
+      paymentProvider: allowSimulation ? "momo_simulated" : "mtn_momo",
+    });
+    res.status(201).json({
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      status: ticket.status,
+      totalAmount,
+      currency: ticketType.currency,
+    });
+  } catch (err) {
+    if (handleIssueError(err, res)) return;
+    throw err;
+  }
 });
 
 export default router;

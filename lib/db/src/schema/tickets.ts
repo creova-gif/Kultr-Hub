@@ -36,7 +36,9 @@ export const ticketsTable = pgTable("tickets", {
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").notNull(),
   status: ticketStatusEnum("status").notNull().default("confirmed"),
-  paymentReference: text("payment_reference"),
+  // Unique so a single payment can only ever issue one ticket (idempotency guard).
+  // NULLs are allowed and non-conflicting, so genuinely-free tickets are unaffected.
+  paymentReference: text("payment_reference").unique(),
   paymentProvider: text("payment_provider"),
   purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
 });
