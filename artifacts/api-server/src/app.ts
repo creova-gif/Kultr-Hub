@@ -1,8 +1,9 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import pinoHttp from "pino-http";
+import * as Sentry from "@sentry/node";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
@@ -66,5 +67,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", authLimiter);
 app.use("/api", router);
+
+// Reports uncaught route errors to Sentry (a no-op when SENTRY_DSN is unset)
+// before falling through to the JSON error response below.
+Sentry.setupExpressErrorHandler(app);
+
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  req.log?.error({ err }, "Unhandled request error");
+  if (res.headersSent) return;
+  res.status(500).json({ message: "Internal server error" });
+});
 
 export default app;

@@ -19,6 +19,7 @@ import Constants from "expo-constants";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { Sentry } from "@/utils/sentry";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -120,7 +121,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
+      <ErrorBoundary onError={(error) => Sentry.captureException(error)}>
         <QueryClientProvider client={queryClient}>
           <AppProvider>
             <GestureHandlerRootView style={{ flex: 1 }}>

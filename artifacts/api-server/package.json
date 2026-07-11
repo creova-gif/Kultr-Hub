@@ -12,6 +12,8 @@
     "reconcile-payments": "node --enable-source-maps ./dist/scripts/reconcile-payments.mjs"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@sentry/node": "^10.65.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "bcryptjs": "^2.4.3",
