@@ -10,10 +10,21 @@ const app: Express = express();
 
 app.use(helmet());
 
+// A missing CORS_ORIGIN must never silently fall back to "*" in production —
+// that would let a malicious page hosted anywhere drive authenticated
+// requests against the API. Non-production keeps the permissive default so
+// local dev doesn't require configuring it.
+if (process.env.NODE_ENV === "production" && !process.env.CORS_ORIGIN) {
+  throw new Error("CORS_ORIGIN must be set to a comma-separated allowlist in production.");
+}
+
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN?.split(",") ?? "*",
-    credentials: true,
+    // Auth here is entirely Bearer-token based (see middleware/auth.ts) — no
+    // cookies are ever set or read, so there is nothing that needs the
+    // browser to send credentials, and Access-Control-Allow-Credentials:true
+    // paired with a wildcard origin is invalid per the CORS spec anyway.
   }),
 );
 
