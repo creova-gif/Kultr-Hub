@@ -318,10 +318,12 @@ paths:
       operationId: updateEventStatus
       tags: [events]
       summary: >-
-        Publish, cancel, or end an event. Callable by the event's own
-        creator (draft→live, or cancel/end their own event) or by an admin
-        (any transition on any event, at any time — the moderation
-        kill-switch).
+        Move an event through its lifecycle. A creator may submit their own
+        draft for review (draft→pending_review), withdraw it
+        (pending_review→draft), or cancel/end their own live event — they
+        can never set an event live directly. Only an admin can approve a
+        submission (pending_review→live), or force any transition on any
+        event at any time (the moderation kill-switch).
       security:
         - bearerAuth: []
       parameters:
@@ -350,7 +352,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Event is in a terminal status (cancelled/ended) and the caller is not an admin
+          description: This transition is not allowed for a non-admin caller from the event's current status
           content:
             application/json:
               schema:
@@ -360,7 +362,7 @@ paths:
     get:
       operationId: listAllEventsAdmin
       tags: [events]
-      summary: List every event regardless of status (admin only)
+      summary: List every event, optionally filtered by status (admin only)
       security:
         - bearerAuth: []
       parameters:
@@ -374,6 +376,12 @@ paths:
           schema:
             type: integer
             default: 0
+        - name: status
+          in: query
+          description: Filter to a single status, e.g. pending_review to see the review queue
+          schema:
+            type: string
+            enum: [draft, pending_review, live, cancelled, ended]
       responses:
         "200":
           description: All events
@@ -1301,7 +1309,7 @@ components:
       properties:
         status:
           type: string
-          enum: [live, cancelled, ended]
+          enum: [draft, pending_review, live, cancelled, ended]
 
     EventStatusResponse:
       type: object
@@ -1311,7 +1319,7 @@ components:
           type: string
         status:
           type: string
-          enum: [draft, live, cancelled, ended]
+          enum: [draft, pending_review, live, cancelled, ended]
 
     # ── GAMIFICATION ──────────────────────────────────────────────────────────
     CollectibleRarity:

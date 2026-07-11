@@ -242,6 +242,8 @@ export type UpdateEventStatusRequestStatus =
   (typeof UpdateEventStatusRequestStatus)[keyof typeof UpdateEventStatusRequestStatus];
 
 export const UpdateEventStatusRequestStatus = {
+  draft: "draft",
+  pending_review: "pending_review",
   live: "live",
   cancelled: "cancelled",
   ended: "ended",
@@ -256,6 +258,7 @@ export type EventStatusResponseStatus =
 
 export const EventStatusResponseStatus = {
   draft: "draft",
+  pending_review: "pending_review",
   live: "live",
   cancelled: "cancelled",
   ended: "ended",
@@ -501,7 +504,22 @@ export type ListEventsParams = {
 export type ListAllEventsAdminParams = {
   limit?: number;
   offset?: number;
+  /**
+   * Filter to a single status, e.g. pending_review to see the review queue
+   */
+  status?: ListAllEventsAdminStatus;
 };
+
+export type ListAllEventsAdminStatus =
+  (typeof ListAllEventsAdminStatus)[keyof typeof ListAllEventsAdminStatus];
+
+export const ListAllEventsAdminStatus = {
+  draft: "draft",
+  pending_review: "pending_review",
+  live: "live",
+  cancelled: "cancelled",
+  ended: "ended",
+} as const;
 
 export type GetFxRatesParams = {
   base?: string;

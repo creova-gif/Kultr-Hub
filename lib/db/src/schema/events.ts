@@ -25,7 +25,7 @@ export const eventCategoryEnum = pgEnum("event_category", [
   "Nightlife",
 ]);
 
-export const eventStatusEnum = pgEnum("event_status", ["draft", "live", "ended", "cancelled"]);
+export const eventStatusEnum = pgEnum("event_status", ["draft", "pending_review", "live", "ended", "cancelled"]);
 
 export const eventsTable = pgTable(
   "events",

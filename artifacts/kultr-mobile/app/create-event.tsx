@@ -144,16 +144,16 @@ export default function CreateEventScreen() {
         return;
       }
 
-      // The server always creates events as "draft" — this is the actual
-      // publish step. Without it the event would never appear anywhere
-      // public despite this screen telling the creator it's live.
+      // The server always creates events as "draft". Submitting for review
+      // is as far as a creator can push it themselves — an admin has to
+      // approve it before it's actually live and publicly visible.
       try {
-        await updateEventStatusApi({ id: created.id, data: { status: "live" } });
+        await updateEventStatusApi({ id: created.id, data: { status: "pending_review" } });
       } catch (err) {
         setPublishing(false);
         Alert.alert(
           "Saved as draft",
-          "Your event was created but couldn't be published yet. Try publishing it again from your event list.",
+          "Your event was created but couldn't be submitted for review yet. Try submitting it again from your event list.",
           [{ text: "OK", onPress: () => router.replace("/(tabs)/profile") }],
         );
         return;
@@ -175,20 +175,26 @@ export default function CreateEventScreen() {
         <View style={styles.successIcon}>
           <Feather name="check" size={40} color="#fff" />
         </View>
-        <Text style={styles.successTitle}>Event Published!</Text>
+        <Text style={styles.successTitle}>
+          {authToken ? "Submitted for Review" : "Event Published!"}
+        </Text>
         <Text style={styles.successSub}>
-          Your event is now live. Share it with the world.
+          {authToken
+            ? "We'll review your event shortly. You'll be able to share it once it's approved and live."
+            : "Your event is now live. Share it with the world."}
         </Text>
         <View style={styles.successActions}>
-          <Pressable
-            style={styles.successShare}
-            onPress={() => {
-              Haptics.selectionAsync();
-            }}
-          >
-            <Feather name="share-2" size={16} color="#FF6B00" />
-            <Text style={styles.successShareText}>Share Event</Text>
-          </Pressable>
+          {!authToken && (
+            <Pressable
+              style={styles.successShare}
+              onPress={() => {
+                Haptics.selectionAsync();
+              }}
+            >
+              <Feather name="share-2" size={16} color="#FF6B00" />
+              <Text style={styles.successShareText}>Share Event</Text>
+            </Pressable>
+          )}
           <Pressable
             style={styles.successDone}
             onPress={() => router.replace("/(tabs)/profile")}

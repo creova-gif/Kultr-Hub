@@ -5,8 +5,13 @@
  * Kultr Hub API
  * OpenAPI spec version: 0.2.0
  */
+import type { ListAllEventsAdminStatus } from "./listAllEventsAdminStatus";
 
 export type ListAllEventsAdminParams = {
   limit?: number;
   offset?: number;
+  /**
+   * Filter to a single status, e.g. pending_review to see the review queue
+   */
+  status?: ListAllEventsAdminStatus;
 };

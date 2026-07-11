@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type EventStatusResponseStatus =
-  (typeof EventStatusResponseStatus)[keyof typeof EventStatusResponseStatus];
+export type ListAllEventsAdminStatus =
+  (typeof ListAllEventsAdminStatus)[keyof typeof ListAllEventsAdminStatus];
 
-export const EventStatusResponseStatus = {
+export const ListAllEventsAdminStatus = {
   draft: "draft",
   pending_review: "pending_review",
   live: "live",

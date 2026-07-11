@@ -26,6 +26,14 @@ const CHART_H = 160;
 
 // ── Chart helpers ────────────────────────────────────────────────────────────
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  pending_review: "In Review",
+  live: "Live",
+  ended: "Ended",
+  cancelled: "Cancelled",
+};
+
 function normalise(data: number[]): number[] {
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
@@ -454,7 +462,7 @@ export default function CreatorStudioScreen() {
                         styles.statusDot,
                         {
                           backgroundColor:
-                            ev.status === "live" ? "#00C853" : ev.status === "ended" ? "#555" : "#FFA726",
+                            ev.status === "live" ? "#00C853" : ev.status === "ended" || ev.status === "cancelled" ? "#555" : "#FFA726",
                         },
                       ]}
                     />
@@ -462,11 +470,11 @@ export default function CreatorStudioScreen() {
                       style={[
                         styles.statusText,
                         {
-                          color: ev.status === "live" ? "#00C853" : ev.status === "ended" ? "#555" : "#FFA726",
+                          color: ev.status === "live" ? "#00C853" : ev.status === "ended" || ev.status === "cancelled" ? "#555" : "#FFA726",
                         },
                       ]}
                     >
-                      {ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}
+                      {STATUS_LABELS[ev.status] ?? ev.status}
                     </Text>
                   </View>
                 </View>

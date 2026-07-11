@@ -243,14 +243,17 @@ router.get("/creator/analytics", requireAuth, async (req: Request, res: Response
  * generic /:id route below so "admin" is never matched as an event id.
  */
 router.get("/admin/all", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-  const { limit = "50", offset = "0" } = req.query as Record<string, string>;
+  const { limit = "50", offset = "0", status } = req.query as Record<string, string>;
+
+  const conditions = status ? [eq(eventsTable.status, status as "draft")] : [];
 
   const [events, [{ count }]] = await Promise.all([
     db.select().from(eventsTable)
+      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(eventsTable.createdAt))
       .limit(parseInt(limit))
       .offset(parseInt(offset)),
-    db.select({ count: sql<number>`count(*)::int` }).from(eventsTable),
+    db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(conditions.length ? and(...conditions) : undefined),
   ]);
 
   const eventIds = events.map((e) => e.id);
@@ -371,8 +374,20 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
   });
 });
 
-const STATUS_TARGETS = ["live", "cancelled", "ended"] as const;
+const STATUS_TARGETS = ["draft", "pending_review", "live", "cancelled", "ended"] as const;
 type StatusTarget = (typeof STATUS_TARGETS)[number];
+
+// Non-admin creators can only move their OWN event along this narrow path —
+// critically, nothing in this table lets a creator reach "live" directly.
+// Only an admin approving out of "pending_review" can do that. Admins are
+// exempt from this table entirely: any status, from any status, at any
+// time — the moderation kill-switch (and the review-approval path) a
+// platform with no automated organizer verification needs.
+const CREATOR_ALLOWED_TRANSITIONS: Partial<Record<StatusTarget, readonly StatusTarget[]>> = {
+  draft: ["pending_review", "cancelled"],
+  pending_review: ["draft"],
+  live: ["cancelled", "ended"],
+};
 
 /**
  * PATCH /api/events/:id/status
@@ -380,12 +395,12 @@ type StatusTarget = (typeof STATUS_TARGETS)[number];
  * Before this route existed there was no way for ANY event — including ones
  * created through the app's own create-event flow, which always inserts as
  * "draft" — to ever become publicly visible; only hand-seeded demo data was
- * ever "live". This closes that gap while also closing the broken-access-
- * control one: creators may only move their OWN event, and only through
- * sensible transitions; an admin may force ANY event to cancelled/ended at
- * any time regardless of its current status — the moderation kill-switch a
- * platform with zero organizer verification needs before it can safely
- * accept public event creation.
+ * ever "live". An earlier version of this route closed that gap but let a
+ * creator move their own draft straight to "live" with no review step,
+ * which reopened the exact fraud surface (self-serve creation with zero
+ * vetting) the platform's original audit brief asked to be closed. Creators
+ * now submit for review (draft → pending_review); only an admin can
+ * actually publish (pending_review → live).
  */
 router.patch("/:id/status", requireAuth, async (req: Request, res: Response) => {
   const authed = req as AuthedRequest;
@@ -408,8 +423,9 @@ router.patch("/:id/status", requireAuth, async (req: Request, res: Response) => 
       res.status(403).json({ message: "You do not have permission to change this event." });
       return;
     }
-    if (event.status === "cancelled" || event.status === "ended") {
-      res.status(409).json({ message: "This event's status can no longer be changed." });
+    const allowedTargets = CREATOR_ALLOWED_TRANSITIONS[event.status as StatusTarget] ?? [];
+    if (!allowedTargets.includes(status as StatusTarget)) {
+      res.status(409).json({ message: `Cannot move this event from "${event.status}" to "${status}".` });
       return;
     }
   }

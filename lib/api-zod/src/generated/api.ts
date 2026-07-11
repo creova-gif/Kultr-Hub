@@ -263,23 +263,23 @@ export const GetCreatorAnalyticsResponse = zod.object({
 });
 
 /**
- * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ * @summary Move an event through its lifecycle. A creator may submit their own draft for review (draft→pending_review), withdraw it (pending_review→draft), or cancel/end their own live event — they can never set an event live directly. Only an admin can approve a submission (pending_review→live), or force any transition on any event at any time (the moderation kill-switch).
  */
 export const UpdateEventStatusParams = zod.object({
   id: zod.coerce.string(),
 });
 
 export const UpdateEventStatusBody = zod.object({
-  status: zod.enum(["live", "cancelled", "ended"]),
+  status: zod.enum(["draft", "pending_review", "live", "cancelled", "ended"]),
 });
 
 export const UpdateEventStatusResponse = zod.object({
   id: zod.string(),
-  status: zod.enum(["draft", "live", "cancelled", "ended"]),
+  status: zod.enum(["draft", "pending_review", "live", "cancelled", "ended"]),
 });
 
 /**
- * @summary List every event regardless of status (admin only)
+ * @summary List every event, optionally filtered by status (admin only)
  */
 export const listAllEventsAdminQueryLimitDefault = 50;
 export const listAllEventsAdminQueryOffsetDefault = 0;
@@ -287,6 +287,12 @@ export const listAllEventsAdminQueryOffsetDefault = 0;
 export const ListAllEventsAdminQueryParams = zod.object({
   limit: zod.coerce.number().default(listAllEventsAdminQueryLimitDefault),
   offset: zod.coerce.number().default(listAllEventsAdminQueryOffsetDefault),
+  status: zod
+    .enum(["draft", "pending_review", "live", "cancelled", "ended"])
+    .optional()
+    .describe(
+      "Filter to a single status, e.g. pending_review to see the review queue",
+    ),
 });
 
 export const ListAllEventsAdminResponse = zod.object({

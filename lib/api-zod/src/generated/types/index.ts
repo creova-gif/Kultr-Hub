@@ -35,6 +35,7 @@ export * from "./healthStatus";
 export * from "./ledgerEntry";
 export * from "./ledgerResponse";
 export * from "./listAllEventsAdminParams";
+export * from "./listAllEventsAdminStatus";
 export * from "./listEventsParams";
 export * from "./loginRequest";
 export * from "./otpRequest";

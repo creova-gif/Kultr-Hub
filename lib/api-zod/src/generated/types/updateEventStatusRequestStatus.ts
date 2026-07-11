@@ -10,6 +10,8 @@ export type UpdateEventStatusRequestStatus =
   (typeof UpdateEventStatusRequestStatus)[keyof typeof UpdateEventStatusRequestStatus];
 
 export const UpdateEventStatusRequestStatus = {
+  draft: "draft",
+  pending_review: "pending_review",
   live: "live",
   cancelled: "cancelled",
   ended: "ended",

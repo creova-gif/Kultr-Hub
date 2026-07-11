@@ -1113,7 +1113,7 @@ export function useGetCreatorAnalytics<
 }
 
 /**
- * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ * @summary Move an event through its lifecycle. A creator may submit their own draft for review (draft→pending_review), withdraw it (pending_review→draft), or cancel/end their own live event — they can never set an event live directly. Only an admin can approve a submission (pending_review→live), or force any transition on any event at any time (the moderation kill-switch).
  */
 export const getUpdateEventStatusUrl = (id: string) => {
   return `/api/events/${id}/status`;
@@ -1177,7 +1177,7 @@ export type UpdateEventStatusMutationBody = BodyType<UpdateEventStatusRequest>;
 export type UpdateEventStatusMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Publish, cancel, or end an event. Callable by the event's own creator (draft→live, or cancel/end their own event) or by an admin (any transition on any event, at any time — the moderation kill-switch).
+ * @summary Move an event through its lifecycle. A creator may submit their own draft for review (draft→pending_review), withdraw it (pending_review→draft), or cancel/end their own live event — they can never set an event live directly. Only an admin can approve a submission (pending_review→live), or force any transition on any event at any time (the moderation kill-switch).
  */
 export const useUpdateEventStatus = <
   TError = ErrorType<ErrorResponse>,
@@ -1200,7 +1200,7 @@ export const useUpdateEventStatus = <
 };
 
 /**
- * @summary List every event regardless of status (admin only)
+ * @summary List every event, optionally filtered by status (admin only)
  */
 export const getListAllEventsAdminUrl = (params?: ListAllEventsAdminParams) => {
   const normalizedParams = new URLSearchParams();
@@ -1270,7 +1270,7 @@ export type ListAllEventsAdminQueryResult = NonNullable<
 export type ListAllEventsAdminQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary List every event regardless of status (admin only)
+ * @summary List every event, optionally filtered by status (admin only)
  */
 
 export function useListAllEventsAdmin<

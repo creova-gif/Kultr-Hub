@@ -33,7 +33,7 @@ export interface CreatedEvent {
   description: string;
   ticketsSold: number;
   revenue: number;
-  status: "draft" | "live" | "ended";
+  status: "draft" | "pending_review" | "live" | "ended" | "cancelled";
   createdAt: string;
 }
 
@@ -131,7 +131,7 @@ function adaptAnalyticsStat(stat: CreatedEventStats): CreatedEvent {
     description: "",
     ticketsSold: stat.ticketsSold,
     revenue: stat.revenue,
-    status: stat.status as "draft" | "live" | "ended",
+    status: stat.status as "draft" | "pending_review" | "live" | "ended" | "cancelled",
     createdAt: date,
   };
 }
