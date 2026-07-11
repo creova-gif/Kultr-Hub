@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db, usersTable, otpCodesTable } from "@workspace/db";
 import { signToken } from "../lib/jwt.js";
 import { sendSms, isSmsConfigured } from "../lib/sms.js";
@@ -70,7 +70,7 @@ router.post("/signup", async (req: Request, res: Response) => {
     countryCode,
   }).returning();
 
-  const token = signToken({ userId: user.id, email: user.email });
+  const token = signToken({ userId: user.id, email: user.email, tokenVersion: user.tokenVersion });
   res.status(201).json({
     token,
     user: {
@@ -105,7 +105,7 @@ router.post("/login", async (req: Request, res: Response) => {
     return;
   }
 
-  const token = signToken({ userId: user.id, email: user.email });
+  const token = signToken({ userId: user.id, email: user.email, tokenVersion: user.tokenVersion });
   res.json({
     token,
     user: {
@@ -243,11 +243,23 @@ router.post("/otp/verify", async (req: Request, res: Response) => {
       .returning();
   }
 
-  const token = signToken({ userId: user.id, email: user.email });
+  const token = signToken({ userId: user.id, email: user.email, tokenVersion: user.tokenVersion });
   res.json({ token, user: userPublic(user) });
 });
 
-router.post("/logout", requireAuth, (_req: Request, res: Response) => {
+/**
+ * Bumps tokenVersion, which immediately invalidates every outstanding token
+ * for this user (this device and any other) — requireAuth compares the
+ * embedded version against the current one on every request. Previously
+ * this endpoint did nothing at all; a token remained fully valid for its
+ * whole 7-day life regardless of "logging out".
+ */
+router.post("/logout", requireAuth, async (req: Request, res: Response) => {
+  const { userId } = req as AuthedRequest;
+  await db
+    .update(usersTable)
+    .set({ tokenVersion: sql`${usersTable.tokenVersion} + 1` })
+    .where(eq(usersTable.id, userId));
   res.status(204).send();
 });
 

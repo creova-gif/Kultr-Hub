@@ -51,10 +51,11 @@ test("jwt: boots in development with no JWT_SECRET (ephemeral dev secret)", () =
 
 test("jwt: sign/verify round-trip works and rejects tokens signed with a different secret", async () => {
   const { signToken, verifyToken } = await import("../jwt.js");
-  const token = signToken({ userId: "u1", email: "u1@example.com" });
+  const token = signToken({ userId: "u1", email: "u1@example.com", tokenVersion: 0 });
   const payload = verifyToken(token);
   assert.equal(payload.userId, "u1");
   assert.equal(payload.email, "u1@example.com");
+  assert.equal(payload.tokenVersion, 0);
 
   const jwt = (await import("jsonwebtoken")).default;
   const forged = jwt.sign({ userId: "attacker", email: "a@a.com" }, "wrong-secret", {

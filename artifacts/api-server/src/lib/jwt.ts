@@ -35,6 +35,11 @@ const JWT_SECRET = resolveSecret();
 export interface JwtPayload {
   userId: string;
   email: string;
+  // Checked against the user's current tokenVersion at auth time — bumping
+  // that column server-side invalidates every token minted before the bump,
+  // which is what makes logout and account deletion actually revoke access
+  // instead of just being unenforceable client-side state.
+  tokenVersion: number;
 }
 
 export function signToken(payload: JwtPayload): string {

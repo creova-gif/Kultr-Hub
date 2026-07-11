@@ -15,6 +15,10 @@ export const usersTable = pgTable("users", {
   // Gates the moderation kill-switch (force any event to cancelled/ended)
   // until a real admin console exists.
   isAdmin: boolean("is_admin").notNull().default(false),
+  // Embedded in every JWT at sign time and checked at auth time — bumping
+  // this invalidates every outstanding token for the user in one write,
+  // without needing a denylist table. See routes/auth.ts POST /logout.
+  tokenVersion: integer("token_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
