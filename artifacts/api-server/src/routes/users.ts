@@ -5,6 +5,7 @@ import {
   usersTable,
   ticketsTable,
   eventsTable,
+  ticketTypesTable,
   kultroinWalletsTable,
   kultroinLedgerTable,
   userQuestProgressTable,
@@ -77,6 +78,8 @@ router.get("/me/export", requireAuth, async (req: Request, res: Response) => {
   });
 });
 
+class AttendeesExistError extends Error {}
+
 /**
  * DELETE /api/users/me
  * Right to erasure. Removes the account and all rows that reference it
@@ -86,30 +89,62 @@ router.get("/me/export", requireAuth, async (req: Request, res: Response) => {
  * bought by *other* people, deletion would cascade-delete those buyers' tickets.
  * We refuse in that case so attendees are never silently stripped of a ticket
  * they paid for — the creator must transfer or wind down those events first.
+ *
+ * The guard and the delete run in one transaction, with the creator's
+ * ticket_types row-locked (SELECT ... FOR UPDATE) for its duration. issueTicket()
+ * takes a conflicting lock on that same row via its guarded UPDATE — so a
+ * purchase racing this deletion serializes against it instead of landing in
+ * the gap between an unguarded check and an unguarded delete.
  */
 router.delete("/me", requireAuth, async (req: Request, res: Response) => {
   const { userId } = req as AuthedRequest;
 
-  const ownedEvents = await db
-    .select({ id: eventsTable.id })
-    .from(eventsTable)
-    .where(eq(eventsTable.creatorId, userId));
+  try {
+    const deleted = await db.transaction(async (tx) => {
+      const ownedEvents = await tx
+        .select({ id: eventsTable.id })
+        .from(eventsTable)
+        .where(eq(eventsTable.creatorId, userId));
 
-  if (ownedEvents.length > 0) {
-    const eventIds = ownedEvents.map((e) => e.id);
-    const [othersTicket] = await db
-      .select({ id: ticketsTable.id })
-      .from(ticketsTable)
-      .where(
-        and(
-          inArray(ticketsTable.eventId, eventIds),
-          ne(ticketsTable.userId, userId),
-          eq(ticketsTable.status, "confirmed"),
-        ),
-      )
-      .limit(1);
+      if (ownedEvents.length > 0) {
+        const eventIds = ownedEvents.map((e) => e.id);
 
-    if (othersTicket) {
+        // Lock every ticket_types row for these events before re-checking —
+        // this is the same row a concurrent issueTicket() call must update to
+        // complete a purchase, so that call now blocks until this transaction
+        // commits or rolls back instead of racing it.
+        await tx
+          .select({ id: ticketTypesTable.id })
+          .from(ticketTypesTable)
+          .where(inArray(ticketTypesTable.eventId, eventIds))
+          .for("update");
+
+        const [othersTicket] = await tx
+          .select({ id: ticketsTable.id })
+          .from(ticketsTable)
+          .where(
+            and(
+              inArray(ticketsTable.eventId, eventIds),
+              ne(ticketsTable.userId, userId),
+              eq(ticketsTable.status, "confirmed"),
+            ),
+          )
+          .limit(1);
+
+        if (othersTicket) throw new AttendeesExistError();
+      }
+
+      return tx.delete(usersTable).where(eq(usersTable.id, userId)).returning({ id: usersTable.id });
+    });
+
+    if (deleted.length === 0) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    if (err instanceof AttendeesExistError) {
       res.status(409).json({
         message:
           "Your events have tickets held by other attendees. Cancel or transfer those events before deleting your account, or contact support.",
@@ -117,15 +152,8 @@ router.delete("/me", requireAuth, async (req: Request, res: Response) => {
       });
       return;
     }
+    throw err;
   }
-
-  const deleted = await db.delete(usersTable).where(eq(usersTable.id, userId)).returning({ id: usersTable.id });
-  if (deleted.length === 0) {
-    res.status(404).json({ message: "User not found" });
-    return;
-  }
-
-  res.status(204).send();
 });
 
 export default router;
