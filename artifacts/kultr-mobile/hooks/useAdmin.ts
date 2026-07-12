@@ -23,12 +23,21 @@ interface MutationCallbacks<T> {
   onError?: (error: unknown) => void;
 }
 
-/** Every event awaiting moderation review (admin only — server returns 403 otherwise). */
+/**
+ * Every event awaiting moderation review (admin only — server returns 403
+ * otherwise). Uses the default retry behavior: on a cold load (deep link or
+ * browser refresh straight into /admin) the query can fire a beat before the
+ * auth token is attached, and a hard `retry: false` here turned that one
+ * transient 401 into a permanently empty "Nothing pending review" queue —
+ * a false negative on the one screen where that's most dangerous. The
+ * sibling payouts/notifications/analytics queries already retry through the
+ * same race without issue.
+ */
 export function useAdminReviewQueue() {
   const { authToken } = useApp();
   return useListAllEventsAdmin(
     { status: "pending_review", limit: 100 },
-    { query: { queryKey: getListAllEventsAdminQueryKey({ status: "pending_review", limit: 100 }), enabled: !!authToken, retry: false } },
+    { query: { queryKey: getListAllEventsAdminQueryKey({ status: "pending_review", limit: 100 }), enabled: !!authToken } },
   );
 }
 
@@ -51,7 +60,7 @@ export function useSetEventStatus() {
 export function useAdminPendingPayouts() {
   const { authToken } = useApp();
   return useListPendingPayoutsAdmin({
-    query: { queryKey: getListPendingPayoutsAdminQueryKey(), enabled: !!authToken, retry: false },
+    query: { queryKey: getListPendingPayoutsAdminQueryKey(), enabled: !!authToken },
   });
 }
 
@@ -74,7 +83,7 @@ export function useResolvePayoutAdmin() {
 export function useAdminEventReports() {
   const { authToken } = useApp();
   return useListEventReportsAdmin({
-    query: { queryKey: getListEventReportsAdminQueryKey(), enabled: !!authToken, retry: false },
+    query: { queryKey: getListEventReportsAdminQueryKey(), enabled: !!authToken },
   });
 }
 

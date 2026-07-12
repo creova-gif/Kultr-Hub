@@ -34,7 +34,7 @@ const LOGO_ICON = require("@/assets/images/logo-icon.png");
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { setAuth, userCountry } = useApp();
+  const { setAuth, setOnboardingDone, userCountry } = useApp();
 
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
@@ -109,7 +109,15 @@ export default function LoginScreen() {
       isAdmin: res.user.isAdmin,
     };
     await setAuth(res.token, user);
-    router.back();
+    // A signed-in user has nothing left to onboard for. router.back() used to
+    // land here — fine if login was reached mid-onboarding-carousel, but the
+    // front-door "Sign in" link on the splash screen pushes straight to
+    // /login without ever marking onboarding done, so back() returned users
+    // to the splash screen and the root redirect guard (isHydrated &&
+    // !onboardingDone) sent them straight back to onboarding, stuck in a
+    // loop despite being fully authenticated.
+    await setOnboardingDone(true);
+    router.replace("/(tabs)");
   };
 
   const errorStatus = (err: unknown): number | undefined =>
