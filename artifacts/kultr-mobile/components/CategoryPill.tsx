@@ -35,7 +35,7 @@ export function CategoryPills({ categories, selected, onSelect }: Props) {
               },
             ]}
           >
-            <Text style={[styles.text, { color: active ? "#fff" : colors.mutedForeground }]}>
+            <Text style={[styles.text, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
               {cat}
             </Text>
           </Pressable>

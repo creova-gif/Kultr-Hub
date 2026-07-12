@@ -177,7 +177,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   urgencyText: {
-    color: "#fff",
+    // White-on-orange measured ~2.86:1, failing WCAG AA. Near-black matches
+    // the fix already applied to the primary/accent color tokens.
+    color: "#111111",
     fontSize: 11,
     fontWeight: "700",
   },

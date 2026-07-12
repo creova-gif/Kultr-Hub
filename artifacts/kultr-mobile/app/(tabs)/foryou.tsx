@@ -30,12 +30,12 @@ const { width } = Dimensions.get("window");
 
 const VIBE_CONFIG: Record<string, { vibe: string; color: string; interest: string }> = {
   Music: { vibe: "Energetic", color: "#FF6B00", interest: "music" },
-  Art: { vibe: "Thoughtful", color: "#7B61FF", interest: "art" },
+  Art: { vibe: "Thoughtful", color: "#A78BFA", interest: "art" },
   Food: { vibe: "Indulgent", color: "#FFA726", interest: "food" },
   Heritage: { vibe: "Grounded", color: "#00C853", interest: "heritage" },
   Comedy: { vibe: "Uplifting", color: "#E91E63", interest: "comedy" },
   Sports: { vibe: "Pumped", color: "#00C853", interest: "sports" },
-  Nightlife: { vibe: "Electric", color: "#7B61FF", interest: "nightlife" },
+  Nightlife: { vibe: "Electric", color: "#A78BFA", interest: "nightlife" },
   Film: { vibe: "Calm", color: "#4CAF50", interest: "film" },
   Culture: { vibe: "Connected", color: "#00BCD4", interest: "heritage" },
 };

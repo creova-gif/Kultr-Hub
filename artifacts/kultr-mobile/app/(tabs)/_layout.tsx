@@ -55,7 +55,10 @@ function TabBar({ state, navigation }: TabBarProps) {
 
   const renderTab = (tab: { name: string; label: string; icon: string }) => {
     const focused = activeRoute === tab.name;
-    const tint = focused ? "#FF6B00" : "#5A5A5A";
+    // Inactive-tab gray measured ~4.52:1 on the #0D0D0D tab bar — right at
+    // the WCAG AA edge. #A0A0A0 (the app's mutedForeground token) clears it
+    // comfortably at ~6.6:1.
+    const tint = focused ? "#FF6B00" : "#A0A0A0";
     return (
       <Pressable
         key={tab.name}
