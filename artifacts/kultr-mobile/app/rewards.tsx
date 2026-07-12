@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActivatePass, getGetQuestProgressQueryKey } from "@workspace/api-client-react";
 
+import { Alert } from "@/lib/alert";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useQuestProgress, usePerks, useUnlockPerk, type PerkView } from "@/hooks/useQuests";

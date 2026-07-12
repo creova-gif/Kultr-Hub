@@ -10,12 +10,13 @@ import * as Linking from "expo-linking";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React from "react";
-import { I18nManager } from "react-native";
+import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 
+import { AlertHost } from "@/components/AlertHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { setBaseUrl } from "@workspace/api-client-react";
@@ -69,7 +70,15 @@ function RootLayoutNav() {
     }
   }, [isHydrated, onboardingDone]);
 
+  // Native-only: on web the browser's address bar already *is* the resolved
+  // route, so Expo Router's own web URL handling gets you to /event/:id with
+  // no help needed. Linking.getInitialURL() on web returns the current page
+  // URL (not just a genuine external-launch link), so running this
+  // unconditionally meant every direct visit or refresh of an event page
+  // triggered a redundant router.push() back to the very route already
+  // showing — which never let the stack settle and left the screen blank.
   React.useEffect(() => {
+    if (Platform.OS === "web") return;
     const handleUrl = (event: { url: string }) => {
       const parsed = Linking.parse(event.url);
       if (parsed.path?.startsWith("event/")) {
@@ -113,6 +122,15 @@ function RootLayoutNav() {
   );
 }
 
+function RootLayoutContent() {
+  return (
+    <>
+      <RootLayoutNav />
+      <AlertHost />
+    </>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -133,7 +151,7 @@ export default function RootLayout() {
           <AppProvider>
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
-                <RootLayoutNav />
+                <RootLayoutContent />
               </KeyboardProvider>
             </GestureHandlerRootView>
           </AppProvider>

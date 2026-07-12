@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
-import { I18nManager, Alert, Platform } from "react-native";
+import { I18nManager, Platform } from "react-native";
+import { Alert } from "@/lib/alert";
 import { EA_COUNTRIES, getCountryByCurrency, type EACountry } from "@/constants/currencies";
 import type { Language } from "@/constants/translations";
 import { setAuthTokenGetter, useGetCreatorAnalytics, getGetCreatorAnalyticsQueryKey, useAuthLogout, type CreatedEventStats } from "@workspace/api-client-react";

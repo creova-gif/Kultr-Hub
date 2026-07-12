@@ -4,7 +4,6 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Alert } from "@/lib/alert";
 import { type CreatedEvent, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useCreateEvent, useUpdateEventStatus } from "@workspace/api-client-react";

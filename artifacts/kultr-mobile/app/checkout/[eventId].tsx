@@ -4,7 +4,6 @@ import * as WebBrowser from "expo-web-browser";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Alert } from "@/lib/alert";
 import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { useApp } from "@/context/AppContext";
 import { EVENT_IMAGES, formatDate, formatTime } from "@/constants/data";

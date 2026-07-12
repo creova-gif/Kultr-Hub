@@ -4,7 +4,6 @@ import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect } from "react";
 import {
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Alert } from "@/lib/alert";
 import { QRDisplay } from "@/components/QRDisplay";
 import { useApp } from "@/context/AppContext";
 

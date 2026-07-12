@@ -6,7 +6,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Platform,
@@ -18,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Alert } from "@/lib/alert";
 import { CheckinCelebration } from "@/components/CheckinCelebration";
 import { shareEventToWhatsApp } from "@/utils/share";
 import { EventCardCompact } from "@/components/EventCardCompact";
