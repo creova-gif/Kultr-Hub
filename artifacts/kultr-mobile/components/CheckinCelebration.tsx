@@ -12,6 +12,8 @@ import {
   View,
 } from "react-native";
 
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+
 interface CheckinCelebrationProps {
   visible: boolean;
   eventTitle: string;
@@ -29,18 +31,28 @@ export function CheckinCelebration({
 }: CheckinCelebrationProps) {
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const reduceMotionEnabled = useReducedMotion();
 
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
-        Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      ]).start();
+      if (reduceMotionEnabled) {
+        // Respect the OS "Reduce Motion" setting: skip the bouncy spring
+        // scale entirely (jump straight to the end state) and swap the
+        // 300ms fade for a much shorter, simple one. The check-in
+        // confirmation still appears — it just doesn't animate in.
+        scale.setValue(1);
+        Animated.timing(opacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+      } else {
+        Animated.parallel([
+          Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        ]).start();
+      }
     } else {
       scale.setValue(0);
       opacity.setValue(0);
     }
-  }, [visible, scale, opacity]);
+  }, [visible, scale, opacity, reduceMotionEnabled]);
 
   const shareText = `I'm here at ${eventTitle}! 🎶 Come join the culture. #KultrHub`;
 
