@@ -22,7 +22,7 @@ Events and ticketing platform for East African markets (Kenya, Uganda, Tanzania,
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec) → `lib/api-client-react` (hooks) + `lib/api-zod` (schemas)
 - Build: esbuild (API server, CJS bundle)
-- Payments: Paystack (card), M-Pesa Daraja (STK Push), MTN MoMo (Request-to-Pay)
+- Payments: Paystack (card — KE/GH/NG/ZA), Stripe Checkout (card — diaspora + everywhere else Paystack's currencies don't reach), M-Pesa Daraja (STK Push, Kenya), MTN MoMo (Request-to-Pay), Selcom (Tanzania mobile money — M-Pesa TZ, Tigo Pesa, Airtel Money TZ)
 - Rate limiting: Redis-backed (`REDIS_URL`), falls back to in-process memory per-instance if unset
 - Error monitoring: Sentry, no-ops without a DSN
 

@@ -23,6 +23,11 @@ import {
   convertCurrency,
   type PaymentMethod,
 } from "@/constants/currencies";
+
+// Currencies Stripe Checkout can settle in that this app offers — must match
+// STRIPE_SUPPORTED_CURRENCIES in artifacts/api-server/src/routes/payments.ts.
+// Any other market's diaspora/card payment converts to USD server-side.
+const STRIPE_CURRENCIES = new Set(["USD", "GBP", "CAD", "EUR"]);
 import { useColors } from "@/hooks/useColors";
 import { useEventDetail } from "@/hooks/useEventDetail";
 import { useGetFxRates } from "@workspace/api-client-react";
@@ -245,12 +250,130 @@ export default function CheckoutScreen() {
         return;
       }
 
+      if (activeMethod?.type === "mobile_money" && activeMethod.gateway === "selcom") {
+        const reqRes = await fetch(`${apiBase}/api/payments/selcom/request`, {
+          method: "POST",
+          headers: authHeader,
+          body: JSON.stringify({ eventId: event.id, ticketTypeId: ticketType.id, quantity, phone, countryCode: userCountry.code }),
+        });
+
+        if (!reqRes.ok) {
+          setCheckoutError(await readError(reqRes, "Could not start payment. Please try again."));
+          setLoading(false);
+          return;
+        }
+
+        const reqData = await reqRes.json() as { reference: string; simulated: boolean };
+
+        // Selcom's USSD push is async like MTN MoMo's Request-to-Pay — poll
+        // rather than a single wait-then-check.
+        let verifyData: { ticketId: string; ticketNumber: string } | null = null;
+        const maxAttempts = reqData.simulated ? 1 : 10;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          if (!reqData.simulated) await new Promise((r) => setTimeout(r, 3000));
+
+          const verifyRes = await fetch(`${apiBase}/api/payments/selcom/verify`, {
+            method: "POST",
+            headers: authHeader,
+            body: JSON.stringify({ reference: reqData.reference }),
+          });
+
+          if (verifyRes.status === 202) continue; // still pending — keep polling
+
+          if (!verifyRes.ok) {
+            setCheckoutError(await readError(verifyRes, "Payment could not be confirmed. Please try again."));
+            setLoading(false);
+            return;
+          }
+
+          verifyData = await verifyRes.json() as { ticketId: string; ticketNumber: string };
+          break;
+        }
+
+        if (!verifyData || typeof verifyData.ticketId !== "string") {
+          setCheckoutError("Payment wasn't approved in time. Please try again.");
+          setLoading(false);
+          return;
+        }
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setLoading(false);
+        router.replace(`/ticket/${verifyData.ticketId}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${verifyData.ticketNumber}`);
+        return;
+      }
+
       if (activeMethod?.type === "mobile_money") {
         // No real backend integration exists yet for this operator (Airtel,
         // Vodacom, Tigo, Ethio Telecom, Dashen Bank, ...). Failing clearly
         // here is strictly better than the old behavior of silently sending
         // it to the M-Pesa endpoint regardless of what was selected.
         setCheckoutError(`${activeMethod.label} isn't available yet. Please choose another payment method.`);
+        setLoading(false);
+        return;
+      }
+
+      // card / bank / ussd — routed by `gateway`. Unset defaults to Paystack,
+      // preserving the original behavior for methods that were never
+      // reassigned (e.g. PesaLink, RTGS bank transfer, NG USSD).
+      const gateway = activeMethod?.gateway ?? "paystack";
+
+      if (gateway === "stripe") {
+        const stripeCurrency = STRIPE_CURRENCIES.has(userCountry.currencyCode) ? userCountry.currencyCode : "USD";
+        const initRes = await fetch(`${apiBase}/api/payments/stripe/init`, {
+          method: "POST",
+          headers: authHeader,
+          body: JSON.stringify({ eventId: event.id, ticketTypeId: ticketType.id, quantity, currency: stripeCurrency }),
+        });
+
+        if (!initRes.ok) {
+          setCheckoutError(await readError(initRes, "Could not start card payment. Please try again."));
+          setLoading(false);
+          return;
+        }
+
+        const initData = await initRes.json() as {
+          reference: string;
+          checkoutUrl: string | null;
+          simulated: boolean;
+        };
+
+        const finishStripe = async () => {
+          const verifyRes = await fetch(`${apiBase}/api/payments/stripe/verify`, {
+            method: "POST",
+            headers: authHeader,
+            body: JSON.stringify({ reference: initData.reference }),
+          });
+
+          if (!verifyRes.ok) {
+            setCheckoutError(await readError(verifyRes, "Payment could not be confirmed. Please try again."));
+            setLoading(false);
+            return;
+          }
+
+          const verifyData = await verifyRes.json() as { ticketId: string; ticketNumber: string };
+          if (typeof verifyData.ticketId !== "string") throw new Error("Invalid verify response");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setLoading(false);
+          router.replace(`/ticket/${verifyData.ticketId}?newPurchase=true&eventId=${event.id}&ticketTypeName=${encodeURIComponent(ticketType.name)}&ticketNumber=${verifyData.ticketNumber}`);
+        };
+
+        if (initData.checkoutUrl) {
+          const browserResult = await WebBrowser.openBrowserAsync(initData.checkoutUrl);
+          if (browserResult.type !== "opened") {
+            await finishStripe();
+            return;
+          }
+          // Browser closed without completing checkout — not an error, just stop.
+          setLoading(false);
+          return;
+        }
+
+        if (initData.simulated) {
+          await finishStripe();
+          return;
+        }
+
+        setCheckoutError("Card payment could not be started. Please try again.");
         setLoading(false);
         return;
       }

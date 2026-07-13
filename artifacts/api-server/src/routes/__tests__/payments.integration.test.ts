@@ -300,3 +300,134 @@ test("POST /payments/pass/verify rejects an unknown reference", async (t) => {
   });
   assert.equal(res.status, 400);
 });
+
+test("POST /payments/stripe/init converts the ticket price into the requested currency and persists it", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const res = await fetch(`${baseUrl}/api/payments/stripe/init`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, currency: "USD" }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json() as { reference: string; checkoutUrl: string | null; simulated: boolean; totalAmount: number; currency: string };
+  assert.equal(body.simulated, true);
+  assert.equal(body.checkoutUrl, null);
+  assert.equal(body.currency, "USD");
+  // Ticket is priced 500 KES — converted to USD this must be a small positive
+  // amount, not the raw 500 (proves the FX conversion actually ran).
+  assert.ok(body.totalAmount > 0 && body.totalAmount < 500);
+
+  const [pending] = await db.select().from(pendingPaymentsTable).where(eq(pendingPaymentsTable.reference, body.reference)).limit(1);
+  assert.equal(pending.provider, "stripe");
+  assert.equal(pending.currency, "USD");
+  assert.equal(pending.userId, buyerId);
+});
+
+test("POST /payments/stripe/init rejects an unsupported settlement currency", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const res = await fetch(`${baseUrl}/api/payments/stripe/init`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, currency: "KES" }),
+  });
+  assert.equal(res.status, 400);
+});
+
+test("POST /payments/stripe/verify issues a ticket from the pending payment in simulated mode", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const initRes = await fetch(`${baseUrl}/api/payments/stripe/init`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, currency: "USD" }),
+  });
+  const { reference } = await initRes.json() as { reference: string };
+
+  const verifyRes = await fetch(`${baseUrl}/api/payments/stripe/verify`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ reference }),
+  });
+  assert.equal(verifyRes.status, 201);
+  const body = await verifyRes.json() as { ticketId: string; status: string; currency: string };
+  assert.equal(body.status, "confirmed");
+  assert.equal(body.currency, "USD");
+
+  const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, body.ticketId)).limit(1);
+  assert.equal(ticket.paymentProvider, "stripe_simulated");
+  assert.equal(ticket.currency, "USD");
+});
+
+test("POST /payments/stripe/verify rejects a reference belonging to a different account", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const initRes = await fetch(`${baseUrl}/api/payments/stripe/init`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, currency: "USD" }),
+  });
+  const { reference } = await initRes.json() as { reference: string };
+
+  const verifyRes = await fetch(`${baseUrl}/api/payments/stripe/verify`, {
+    method: "POST",
+    headers: authHeaders(otherBuyerToken),
+    body: JSON.stringify({ reference }),
+  });
+  assert.equal(verifyRes.status, 403);
+});
+
+test("POST /payments/selcom/request converts the ticket price into TZS and persists it", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const res = await fetch(`${baseUrl}/api/payments/selcom/request`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, phone: "0712345678", countryCode: "TZ" }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json() as { reference: string; simulated: boolean; totalAmount: number; currency: string };
+  assert.equal(body.simulated, true);
+  assert.equal(body.currency, "TZS");
+  assert.ok(body.totalAmount > 0);
+
+  const [pending] = await db.select().from(pendingPaymentsTable).where(eq(pendingPaymentsTable.reference, body.reference)).limit(1);
+  assert.equal(pending.provider, "selcom");
+  assert.equal(pending.currency, "TZS");
+});
+
+test("POST /payments/selcom/verify issues a ticket from the pending payment in simulated mode", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const reqRes = await fetch(`${baseUrl}/api/payments/selcom/request`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, phone: "0712345678", countryCode: "TZ" }),
+  });
+  const { reference } = await reqRes.json() as { reference: string };
+
+  const verifyRes = await fetch(`${baseUrl}/api/payments/selcom/verify`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ reference }),
+  });
+  assert.equal(verifyRes.status, 201);
+  const body = await verifyRes.json() as { ticketId: string; status: string; currency: string };
+  assert.equal(body.status, "confirmed");
+  assert.equal(body.currency, "TZS");
+
+  const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, body.ticketId)).limit(1);
+  assert.equal(ticket.paymentProvider, "selcom_simulated");
+});
+
+test("POST /payments/selcom/verify rejects a reference belonging to a different account", async (t) => {
+  if (!dbAvailable) return t.skip("no reachable database");
+  const reqRes = await fetch(`${baseUrl}/api/payments/selcom/request`, {
+    method: "POST",
+    headers: authHeaders(buyerToken),
+    body: JSON.stringify({ eventId, ticketTypeId, quantity: 1, phone: "0712345678", countryCode: "TZ" }),
+  });
+  const { reference } = await reqRes.json() as { reference: string };
+
+  const verifyRes = await fetch(`${baseUrl}/api/payments/selcom/verify`, {
+    method: "POST",
+    headers: authHeaders(otherBuyerToken),
+    body: JSON.stringify({ reference }),
+  });
+  assert.equal(verifyRes.status, 403);
+});

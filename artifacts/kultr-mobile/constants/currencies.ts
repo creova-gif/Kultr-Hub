@@ -13,6 +13,19 @@ export interface EACountry {
 
 export type PaymentMethodType = "mobile_money" | "card" | "bank" | "ussd";
 
+/**
+ * Which backend integration actually processes this method. "card"/"bank"/
+ * "ussd" methods default to Paystack unless overridden — Paystack only
+ * settles KES/GHS/NGN/ZAR/USD, so every other market's card method is
+ * explicitly routed to "stripe" instead. Tanzania's three mobile-money
+ * operators are explicitly routed to "selcom", the only rail in this app
+ * that reaches TZS mobile money. Methods with no real backend integration
+ * (Monzo, Wise, CashApp, Zelle, Interac, NCB Lynk, Bitt, SnapScan, Ozow,
+ * InstaPay, and the non-Vodacom/Tigo/Airtel-TZ mobile money operators) are
+ * left unset and surface as "not available yet" at checkout.
+ */
+export type PaymentGateway = "paystack" | "stripe" | "selcom";
+
 export interface PaymentMethod {
   id: string;
   label: string;
@@ -23,6 +36,7 @@ export interface PaymentMethod {
   phonePrefix?: string;
   phonePlaceholder?: string;
   color: string;
+  gateway?: PaymentGateway;
 }
 
 export const EA_COUNTRIES: EACountry[] = [
@@ -73,6 +87,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "paystack",
       },
     ],
   },
@@ -115,6 +130,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
       {
         id: "bank_ug",
@@ -146,6 +162,7 @@ export const EA_COUNTRIES: EACountry[] = [
         phonePrefix: "+255",
         phonePlaceholder: "74 123 4567",
         color: "#E53935",
+        gateway: "selcom",
       },
       {
         id: "tigopesa",
@@ -157,6 +174,7 @@ export const EA_COUNTRIES: EACountry[] = [
         phonePrefix: "+255",
         phonePlaceholder: "71 234 5678",
         color: "#0091EA",
+        gateway: "selcom",
       },
       {
         id: "airtel_tz",
@@ -168,6 +186,7 @@ export const EA_COUNTRIES: EACountry[] = [
         phonePrefix: "+255",
         phonePlaceholder: "78 345 6789",
         color: "#F44336",
+        gateway: "selcom",
       },
       {
         id: "card",
@@ -176,6 +195,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -218,6 +238,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -260,6 +281,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
       {
         id: "cbe_birr",
@@ -321,6 +343,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "paystack",
       },
     ],
   },
@@ -379,6 +402,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "paystack",
       },
     ],
   },
@@ -419,6 +443,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "paystack",
       },
     ],
   },
@@ -459,6 +484,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -513,6 +539,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -567,6 +594,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -610,6 +638,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -647,6 +676,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -683,6 +713,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -719,6 +750,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -755,6 +787,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -791,6 +824,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },
@@ -827,6 +861,7 @@ export const EA_COUNTRIES: EACountry[] = [
         icon: "credit-card",
         type: "card",
         color: "#FF6B00",
+        gateway: "stripe",
       },
     ],
   },

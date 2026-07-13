@@ -667,6 +667,39 @@ export interface MoMoRequestResponse {
   customerMessage: string;
 }
 
+export interface StripeInitRequest {
+  eventId: string;
+  ticketTypeId: string;
+  quantity?: number;
+  /** Settlement currency for the card charge. One of: USD, GBP, CAD, EUR. Defaults to USD. */
+  currency?: string;
+}
+
+export interface StripeCheckoutResponse {
+  reference: string;
+  checkoutUrl: string | null;
+  simulated: boolean;
+  totalAmount: number;
+  currency: string;
+}
+
+export interface SelcomRequestRequest {
+  eventId: string;
+  ticketTypeId: string;
+  phone: string;
+  /** Defaults to "TZ" if omitted. */
+  countryCode?: string;
+  quantity?: number;
+}
+
+export interface SelcomPaymentPromptResponse {
+  reference: string;
+  simulated: boolean;
+  totalAmount: number;
+  currency: string;
+  customerMessage: string;
+}
+
 export type PaymentPendingResponseStatus =
   (typeof PaymentPendingResponseStatus)[keyof typeof PaymentPendingResponseStatus];
 

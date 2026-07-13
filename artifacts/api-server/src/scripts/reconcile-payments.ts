@@ -18,6 +18,7 @@ import { and, eq, lt, gt, isNotNull, notExists, sql } from "drizzle-orm";
 import { db, pendingPaymentsTable, ticketsTable } from "@workspace/db";
 import { queryStkPush } from "../lib/mpesa.js";
 import { getMoMoPaymentStatus } from "../lib/mtn-momo.js";
+import { getSelcomOrderStatus } from "../lib/selcom.js";
 import { issueTicket, TicketIssueError } from "../lib/issue.js";
 import { logger } from "../lib/logger.js";
 
@@ -66,7 +67,13 @@ async function reconcileOne(pending: Awaited<ReturnType<typeof findUnreconciled>
   } else if (pending.provider === "mtn_momo") {
     const status = await getMoMoPaymentStatus(handle);
     paid = status?.status === "SUCCESSFUL";
+  } else if (pending.provider === "selcom") {
+    const status = await getSelcomOrderStatus(handle);
+    paid = status?.status === "COMPLETED";
   } else {
+    // Stripe references stay queryable indefinitely (like Paystack), so a
+    // client that never calls /stripe/verify can still complete the
+    // purchase whenever it does — no reconciliation needed for "stripe".
     return "skipped-unsupported-provider" as const;
   }
 

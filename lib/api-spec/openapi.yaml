@@ -1186,6 +1186,181 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /payments/stripe/init:
+    post:
+      operationId: stripeInit
+      tags: [payments]
+      summary: Create a Stripe Checkout session for a ticket purchase (diaspora card payments)
+      description: >-
+        Used for diaspora card payments and any market whose currency
+        Paystack can't settle in. The ticket price is converted server-side
+        from the event's native currency into `currency` (default USD);
+        the converted amount is persisted and re-read at verify time rather
+        than recomputed, so a live FX rate move can't cause a false mismatch.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StripeInitRequest"
+      responses:
+        "200":
+          description: Session created — simulated:true (no checkoutUrl) when Stripe isn't configured outside production
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeCheckoutResponse"
+        "400":
+          description: Missing fields, unsupported currency, or not enough tickets remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Stripe rejected the request, or live FX rates are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/stripe/verify:
+    post:
+      operationId: stripeVerify
+      tags: [payments]
+      summary: Verify a Stripe Checkout session; issues the ticket once confirmed
+      description: >-
+        Quantity, converted unit price, and currency are read from the
+        pending-payment row written at init time, never re-supplied by the
+        caller.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferenceOnlyRequest"
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketIssueResponse"
+        "400":
+          description: Unknown or expired payment reference, or amount mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Card payment could not be confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/selcom/request:
+    post:
+      operationId: selcomRequest
+      tags: [payments]
+      summary: Push a Selcom USSD payment prompt (Tanzania mobile money — M-Pesa TZ, Tigo Pesa, Airtel Money TZ)
+      description: >-
+        The ticket price is converted server-side from the event's native
+        currency into TZS, mirroring POST /payments/stripe/init.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelcomRequestRequest"
+      responses:
+        "200":
+          description: Payment prompt sent — poll POST /payments/selcom/verify for the result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelcomPaymentPromptResponse"
+        "400":
+          description: Missing fields, invalid phone number, or not enough tickets remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Selcom rejected the request, or live FX rates are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/selcom/verify:
+    post:
+      operationId: selcomVerify
+      tags: [payments]
+      summary: Poll a Selcom order's payment status; issues the ticket once confirmed
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferenceOnlyRequest"
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketIssueResponse"
+        "202":
+          description: Still pending — poll again shortly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentPendingResponse"
+        "400":
+          description: Unknown or expired payment reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Payment was declined or failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /payments/pass/init:
     post:
       operationId: initPassPayment
@@ -2662,6 +2837,69 @@ components:
       properties:
         referenceId:
           type: string
+        reference:
+          type: string
+        simulated:
+          type: boolean
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        customerMessage:
+          type: string
+
+    StripeInitRequest:
+      type: object
+      required: [eventId, ticketTypeId]
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        quantity:
+          type: integer
+          default: 1
+        currency:
+          type: string
+          description: 'Settlement currency for the card charge. One of: USD, GBP, CAD, EUR. Defaults to USD.'
+
+    StripeCheckoutResponse:
+      type: object
+      required: [reference, checkoutUrl, simulated, totalAmount, currency]
+      properties:
+        reference:
+          type: string
+        checkoutUrl:
+          type: string
+          nullable: true
+        simulated:
+          type: boolean
+        totalAmount:
+          type: number
+        currency:
+          type: string
+
+    SelcomRequestRequest:
+      type: object
+      required: [eventId, ticketTypeId, phone]
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        phone:
+          type: string
+        countryCode:
+          type: string
+          description: Defaults to "TZ" if omitted.
+        quantity:
+          type: integer
+          default: 1
+
+    SelcomPaymentPromptResponse:
+      type: object
+      required: [reference, simulated, totalAmount, currency, customerMessage]
+      properties:
         reference:
           type: string
         simulated:

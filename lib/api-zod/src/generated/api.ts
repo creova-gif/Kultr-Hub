@@ -917,6 +917,72 @@ export const MomoVerifyBody = zod.object({
 });
 
 /**
+ * Used for diaspora card payments and any market whose currency Paystack can't settle in. The ticket price is converted server-side from the event's native currency into `currency` (default USD); the converted amount is persisted and re-read at verify time rather than recomputed, so a live FX rate move can't cause a false mismatch.
+ * @summary Create a Stripe Checkout session for a ticket purchase (diaspora card payments)
+ */
+export const stripeInitBodyQuantityDefault = 1;
+
+export const StripeInitBody = zod.object({
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  quantity: zod.number().default(stripeInitBodyQuantityDefault),
+  currency: zod
+    .string()
+    .optional()
+    .describe(
+      "Settlement currency for the card charge. One of: USD, GBP, CAD, EUR. Defaults to USD.",
+    ),
+});
+
+export const StripeInitResponse = zod.object({
+  reference: zod.string(),
+  checkoutUrl: zod.string().nullable(),
+  simulated: zod.boolean(),
+  totalAmount: zod.number(),
+  currency: zod.string(),
+});
+
+/**
+ * Quantity, converted unit price, and currency are read from the pending-payment row written at init time, never re-supplied by the caller.
+ * @summary Verify a Stripe Checkout session; issues the ticket once confirmed
+ */
+export const StripeVerifyBody = zod.object({
+  reference: zod.string(),
+});
+
+/**
+ * The ticket price is converted server-side from the event's native currency into TZS, mirroring POST /payments/stripe/init.
+ * @summary Push a Selcom USSD payment prompt (Tanzania mobile money — M-Pesa TZ, Tigo Pesa, Airtel Money TZ)
+ */
+export const selcomRequestBodyQuantityDefault = 1;
+
+export const SelcomRequestBody = zod.object({
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  phone: zod.string(),
+  countryCode: zod
+    .string()
+    .optional()
+    .describe('Defaults to \"TZ\" if omitted.'),
+  quantity: zod.number().default(selcomRequestBodyQuantityDefault),
+});
+
+export const SelcomRequestResponse = zod.object({
+  reference: zod.string(),
+  simulated: zod.boolean(),
+  totalAmount: zod.number(),
+  currency: zod.string(),
+  customerMessage: zod.string(),
+});
+
+/**
+ * @summary Poll a Selcom order's payment status; issues the ticket once confirmed
+ */
+export const SelcomVerifyBody = zod.object({
+  reference: zod.string(),
+});
+
+/**
  * @summary Initialize a Paystack transaction for a KULTR PASS purchase (fixed price, not client-supplied)
  */
 export const InitPassPaymentResponse = zod.object({

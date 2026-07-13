@@ -67,7 +67,11 @@ import type {
   ResolveEventReportRequest,
   ResolvePayoutRequest,
   SearchEventsParams,
+  SelcomPaymentPromptResponse,
+  SelcomRequestRequest,
   SignupRequest,
+  StripeCheckoutResponse,
+  StripeInitRequest,
   TicketDetail,
   TicketIssueResponse,
   TicketListResponse,
@@ -3334,6 +3338,356 @@ export const useMomoVerify = <
   TContext
 > => {
   return useMutation(getMomoVerifyMutationOptions(options));
+};
+
+/**
+ * Used for diaspora card payments and any market whose currency Paystack can't settle in. The ticket price is converted server-side from the event's native currency into `currency` (default USD); the converted amount is persisted and re-read at verify time rather than recomputed, so a live FX rate move can't cause a false mismatch.
+ * @summary Create a Stripe Checkout session for a ticket purchase (diaspora card payments)
+ */
+export const getStripeInitUrl = () => {
+  return `/api/payments/stripe/init`;
+};
+
+export const stripeInit = async (
+  stripeInitRequest: StripeInitRequest,
+  options?: RequestInit,
+): Promise<StripeCheckoutResponse> => {
+  return customFetch<StripeCheckoutResponse>(getStripeInitUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stripeInitRequest),
+  });
+};
+
+export const getStripeInitMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeInit>>,
+    TError,
+    { data: BodyType<StripeInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stripeInit>>,
+  TError,
+  { data: BodyType<StripeInitRequest> },
+  TContext
+> => {
+  const mutationKey = ["stripeInit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stripeInit>>,
+    { data: BodyType<StripeInitRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stripeInit(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StripeInitMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stripeInit>>
+>;
+export type StripeInitMutationBody = BodyType<StripeInitRequest>;
+export type StripeInitMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a Stripe Checkout session for a ticket purchase (diaspora card payments)
+ */
+export const useStripeInit = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeInit>>,
+    TError,
+    { data: BodyType<StripeInitRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stripeInit>>,
+  TError,
+  { data: BodyType<StripeInitRequest> },
+  TContext
+> => {
+  return useMutation(getStripeInitMutationOptions(options));
+};
+
+/**
+ * Quantity, converted unit price, and currency are read from the pending-payment row written at init time, never re-supplied by the caller.
+ * @summary Verify a Stripe Checkout session; issues the ticket once confirmed
+ */
+export const getStripeVerifyUrl = () => {
+  return `/api/payments/stripe/verify`;
+};
+
+export const stripeVerify = async (
+  referenceOnlyRequest: ReferenceOnlyRequest,
+  options?: RequestInit,
+): Promise<TicketIssueResponse> => {
+  return customFetch<TicketIssueResponse>(getStripeVerifyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(referenceOnlyRequest),
+  });
+};
+
+export const getStripeVerifyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stripeVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  const mutationKey = ["stripeVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stripeVerify>>,
+    { data: BodyType<ReferenceOnlyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stripeVerify(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StripeVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stripeVerify>>
+>;
+export type StripeVerifyMutationBody = BodyType<ReferenceOnlyRequest>;
+export type StripeVerifyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify a Stripe Checkout session; issues the ticket once confirmed
+ */
+export const useStripeVerify = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stripeVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  return useMutation(getStripeVerifyMutationOptions(options));
+};
+
+/**
+ * The ticket price is converted server-side from the event's native currency into TZS, mirroring POST /payments/stripe/init.
+ * @summary Push a Selcom USSD payment prompt (Tanzania mobile money — M-Pesa TZ, Tigo Pesa, Airtel Money TZ)
+ */
+export const getSelcomRequestUrl = () => {
+  return `/api/payments/selcom/request`;
+};
+
+export const selcomRequest = async (
+  selcomRequestRequest: SelcomRequestRequest,
+  options?: RequestInit,
+): Promise<SelcomPaymentPromptResponse> => {
+  return customFetch<SelcomPaymentPromptResponse>(getSelcomRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(selcomRequestRequest),
+  });
+};
+
+export const getSelcomRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selcomRequest>>,
+    TError,
+    { data: BodyType<SelcomRequestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof selcomRequest>>,
+  TError,
+  { data: BodyType<SelcomRequestRequest> },
+  TContext
+> => {
+  const mutationKey = ["selcomRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof selcomRequest>>,
+    { data: BodyType<SelcomRequestRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return selcomRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SelcomRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof selcomRequest>>
+>;
+export type SelcomRequestMutationBody = BodyType<SelcomRequestRequest>;
+export type SelcomRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Push a Selcom USSD payment prompt (Tanzania mobile money — M-Pesa TZ, Tigo Pesa, Airtel Money TZ)
+ */
+export const useSelcomRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selcomRequest>>,
+    TError,
+    { data: BodyType<SelcomRequestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof selcomRequest>>,
+  TError,
+  { data: BodyType<SelcomRequestRequest> },
+  TContext
+> => {
+  return useMutation(getSelcomRequestMutationOptions(options));
+};
+
+/**
+ * @summary Poll a Selcom order's payment status; issues the ticket once confirmed
+ */
+export const getSelcomVerifyUrl = () => {
+  return `/api/payments/selcom/verify`;
+};
+
+export const selcomVerify = async (
+  referenceOnlyRequest: ReferenceOnlyRequest,
+  options?: RequestInit,
+): Promise<TicketIssueResponse | PaymentPendingResponse> => {
+  return customFetch<TicketIssueResponse | PaymentPendingResponse>(
+    getSelcomVerifyUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(referenceOnlyRequest),
+    },
+  );
+};
+
+export const getSelcomVerifyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selcomVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof selcomVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  const mutationKey = ["selcomVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof selcomVerify>>,
+    { data: BodyType<ReferenceOnlyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return selcomVerify(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SelcomVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof selcomVerify>>
+>;
+export type SelcomVerifyMutationBody = BodyType<ReferenceOnlyRequest>;
+export type SelcomVerifyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Poll a Selcom order's payment status; issues the ticket once confirmed
+ */
+export const useSelcomVerify = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selcomVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof selcomVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  return useMutation(getSelcomVerifyMutationOptions(options));
 };
 
 /**
