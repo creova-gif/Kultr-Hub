@@ -1,6 +1,6 @@
 # Kultr Hub
 
-**Payments infrastructure for African markets — unified integration for M-Pesa, MTN Mobile Money, and Paystack, plus FX conversion.**
+**An events and ticketing platform for East African markets — discover events, buy tickets with mobile money, and manage events as a creator.**
 
 [![Status](https://img.shields.io/badge/status-active_development-yellow)]()
 [![License](https://img.shields.io/badge/license-proprietary-red)]()
@@ -9,19 +9,21 @@
 
 ## What this is
 
-Kultr Hub is a payments abstraction layer for African markets — one integration point instead of three separate mobile-money and card-payment SDKs. It handles the fragmentation problem directly: M-Pesa (Kenya), MTN Mobile Money (multiple East/West African markets), and Paystack (card payments, primarily Nigeria/Ghana), with foreign exchange conversion built in.
+Kultr Hub is a consumer-facing events and ticketing app for Kenya, Uganda, Tanzania, and Rwanda, built as a React Native/Expo mobile app (iOS, Android, and web) backed by an Express API server and Postgres. Users discover events, buy tickets paid for via M-Pesa, MTN Mobile Money, or card, and creators can list events, track sales, and request payouts. It also includes a lightweight gamification layer (quests, KULTROINS, KULTR PASS) and an admin moderation flow for event review and fraud reports.
 
-This is infrastructure-layer work — likely intended to sit underneath other CREOVA products that need to move money in African markets (e.g., artist royalty payouts via `Sauti-Os`, or merchant payments via `Gopay`) rather than being a standalone consumer-facing product itself.
+Deployed via Replit, synced from this repository's `main` branch.
 
 ---
 
 ## Core Features
 
-- **M-Pesa integration** — Kenya's dominant mobile money system
-- **MTN Mobile Money integration** — multi-market East/West African mobile money
-- **Paystack integration** — card and bank payment processing
-- **FX conversion** — currency conversion between supported markets
-- **JWT auth** — token-based authentication for API consumers
+- **Event discovery** — browse, search, and filter events by date/price/category, with a per-user "For You" feed
+- **Ticket purchase** — M-Pesa (Safaricom), MTN Mobile Money, and card payments via Paystack, with real backend verification (no client-trusted success states)
+- **Creator tools** — event creation with an admin review gate before an event goes live, real-time sales analytics, and payout requests
+- **Admin moderation** — event review queue, payout resolution, and buyer-submitted fraud/abuse reports
+- **Gamification** — quests, KULTROINS (an internal points wallet with a tamper-evident ledger), and KULTR PASS (a real one-time paid multiplier subscription)
+- **Real notifications** — ticket confirmations, event status changes, payout resolutions, and KULTROIN awards
+- **JWT auth** — email/password and phone OTP, with real server-side token revocation on logout
 
 ---
 
@@ -29,9 +31,16 @@ This is infrastructure-layer work — likely intended to sit underneath other CR
 
 | Layer | Technology |
 |---|---|
-| Backend | Node.js, pnpm monorepo |
+| Mobile app | React Native, Expo (Expo Router), TypeScript |
+| API server | Node.js, Express 5, TypeScript |
+| Database | PostgreSQL, Drizzle ORM (versioned migrations) |
+| API contract | OpenAPI spec (`lib/api-spec`) → generated React Query hooks + Zod schemas |
+| Payments | Paystack (card), M-Pesa Daraja (STK Push), MTN MoMo (Request-to-Pay) |
+| Rate limiting | Redis-backed (falls back to in-process memory if unconfigured) |
+| Error monitoring | Sentry (API + mobile) |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) |
-| Architecture | API server (`artifacts/api-server`) |
+| Deployment | Replit, synced from GitHub |
+| Monorepo | pnpm workspaces |
 
 ---
 
@@ -40,7 +49,8 @@ This is infrastructure-layer work — likely intended to sit underneath other CR
 ### Prerequisites
 - Node.js 18+
 - **pnpm** (enforced via preinstall check)
-- API credentials for whichever payment providers you're integrating (M-Pesa, MTN MoMo, Paystack) — **never commit these**
+- A local PostgreSQL instance
+- Payment/SMS provider credentials are optional in development — every provider (Paystack, M-Pesa, MTN MoMo, Africa's Talking SMS) runs in a clearly-flagged simulated mode when unconfigured, **but only outside production** (`NODE_ENV=production` disables simulation regardless of configuration)
 
 ### Installation
 
@@ -49,19 +59,18 @@ git clone https://github.com/creova-gif/Kultr-Hub.git
 cd Kultr-Hub
 pnpm install
 cp .env.example .env
-# fill in your own provider credentials in .env — this file is git-ignored
+# fill in DATABASE_URL and JWT_SECRET at minimum — see .env.example for the full list
+pnpm --filter db run migrate
 pnpm run build
 ```
+
+Run the API server with `pnpm --filter @workspace/api-server run dev` and the mobile app with `pnpm --filter @workspace/kultr-mobile run dev` (or the equivalent Expo commands for a native build).
 
 ---
 
 ## Security Note
 
-This repo touches real payment provider credentials by design (M-Pesa, MTN MoMo, Paystack). A full credential-history check has been run — **clean, no committed secrets found** — but given the sensitivity of what this integrates with, treat any future `.env` handling here with extra care. This is the one CREOVA repo where a leaked key has direct financial consequences, not just an inconvenience.
-
-## Roadmap / Status
-
-Core integrations implemented for all three payment providers plus FX. CI pipeline already in place. Relationship to `Sauti-Os` and `Gopay` (which likely consume this) should be documented explicitly once confirmed.
+This repo handles real payment provider credentials (Paystack, M-Pesa, MTN MoMo) and user auth secrets. `.env` and all local secret files are git-ignored. Every payment/OTP provider's simulated-mode fallback is gated server-side by `NODE_ENV` — never trust a client-supplied flag to skip real verification.
 
 ## Contributing
 
@@ -74,14 +83,3 @@ Proprietary — All Rights Reserved. See `LICENSE`.
 ## Credits
 
 Built by CREOVA. Product lead: Justin Mafie.
-
-
-## Related Products
-
-This is one of three connected CREOVA products forming a single East African fintech / creator-economy thesis: the payment-rail layer (M-Pesa, MTN MoMo, Paystack) that actually moves the money. See [Gopay](https://github.com/creova-gif/Gopay), [Sauti-Os](https://github.com/creova-gif/Sauti-Os), and the full [East Africa Fintech Thesis](https://github.com/creova-gif/CREOVA/blob/main/EAST-AFRICA-FINTECH-THESIS.md) for how they connect.
-
----
-
-## Ecosystem context
-
-This repo is one of three pieces of a broader East Africa fintech and creator-economy thesis, alongside `Gopay`, `Sauti-Os`, and `Kultr-Hub`. See [`EAST-AFRICA-FINTECH-THESIS.md`](https://github.com/creova-gif/CREOVA/blob/main/EAST-AFRICA-FINTECH-THESIS.md) in the CREOVA repo for how these connect — and an honest accounting of what's actually integrated today versus what's still conceptual.
