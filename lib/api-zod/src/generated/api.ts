@@ -811,6 +811,147 @@ export const ActivatePassBody = zod.object({
 });
 
 /**
+ * @summary Initialize a Paystack transaction for a ticket purchase (card / bank / USSD)
+ */
+export const initTicketPaymentBodyQuantityDefault = 1;
+
+export const InitTicketPaymentBody = zod.object({
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  quantity: zod.number().default(initTicketPaymentBodyQuantityDefault),
+});
+
+export const InitTicketPaymentResponse = zod.object({
+  reference: zod.string(),
+  authorizationUrl: zod
+    .string()
+    .nullable()
+    .describe(
+      "Redirect the buyer here to complete payment. Null when simulated.",
+    ),
+  simulated: zod
+    .boolean()
+    .describe(
+      "True only when Paystack is unconfigured AND NODE_ENV is not production.",
+    ),
+  totalAmount: zod.number(),
+  currency: zod.string(),
+});
+
+/**
+ * @summary Verify a Paystack payment and atomically issue the ticket
+ */
+export const verifyTicketPaymentBodyQuantityDefault = 1;
+
+export const VerifyTicketPaymentBody = zod.object({
+  reference: zod.string(),
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  quantity: zod.number().default(verifyTicketPaymentBodyQuantityDefault),
+});
+
+/**
+ * @summary Trigger a Safaricom M-Pesa STK Push prompt on the buyer's phone
+ */
+export const mpesaStkPushBodyQuantityDefault = 1;
+
+export const MpesaStkPushBody = zod.object({
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  phone: zod.string(),
+  countryCode: zod
+    .string()
+    .optional()
+    .describe("Defaults to the caller's stored country if omitted."),
+  quantity: zod.number().default(mpesaStkPushBodyQuantityDefault),
+});
+
+export const MpesaStkPushResponse = zod.object({
+  checkoutRequestId: zod.string(),
+  merchantRequestId: zod.string(),
+  reference: zod.string(),
+  simulated: zod.boolean(),
+  totalAmount: zod.number(),
+  currency: zod.string(),
+  customerMessage: zod.string(),
+});
+
+/**
+ * Quantity, price, and currency are read from the pending-payment row written at stk-push time, never re-supplied by the caller — the M-Pesa STK query response carries no amount, so trusting a client-supplied quantity here would let a buyer pay for one ticket and verify a larger quantity for free.
+ * @summary Poll an M-Pesa STK Push result; issues the ticket once confirmed
+ */
+export const MpesaVerifyBody = zod.object({
+  reference: zod.string(),
+});
+
+/**
+ * @summary Initiate an MTN Mobile Money Request-to-Pay
+ */
+export const momoRequestToPayBodyQuantityDefault = 1;
+
+export const MomoRequestToPayBody = zod.object({
+  eventId: zod.string(),
+  ticketTypeId: zod.string(),
+  phone: zod.string(),
+  countryCode: zod
+    .string()
+    .optional()
+    .describe("Defaults to the caller's stored country if omitted."),
+  quantity: zod.number().default(momoRequestToPayBodyQuantityDefault),
+});
+
+export const MomoRequestToPayResponse = zod.object({
+  referenceId: zod.string(),
+  reference: zod.string(),
+  simulated: zod.boolean(),
+  totalAmount: zod.number(),
+  currency: zod.string(),
+  customerMessage: zod.string(),
+});
+
+/**
+ * @summary Poll an MTN MoMo Request-to-Pay result; issues the ticket once confirmed
+ */
+export const MomoVerifyBody = zod.object({
+  reference: zod.string(),
+});
+
+/**
+ * @summary Initialize a Paystack transaction for a KULTR PASS purchase (fixed price, not client-supplied)
+ */
+export const InitPassPaymentResponse = zod.object({
+  reference: zod.string(),
+  authorizationUrl: zod
+    .string()
+    .nullable()
+    .describe(
+      "Redirect the buyer here to complete payment. Null when simulated.",
+    ),
+  simulated: zod
+    .boolean()
+    .describe(
+      "True only when Paystack is unconfigured AND NODE_ENV is not production.",
+    ),
+  amount: zod
+    .number()
+    .describe("Fixed KULTR PASS price — never client-supplied."),
+  currency: zod.string(),
+});
+
+/**
+ * Idempotent: replaying with an already-verified or already-consumed reference just confirms success again rather than erroring.
+ * @summary Verify a KULTR PASS payment — does not itself grant the entitlement, see POST /pass/activate
+ */
+export const VerifyPassPaymentBody = zod.object({
+  reference: zod.string(),
+});
+
+export const VerifyPassPaymentResponse = zod.object({
+  verified: zod.boolean(),
+  reference: zod.string(),
+});
+
+/**
  * @summary List the signed-in user's notifications, newest first
  */
 export const listNotificationsQueryLimitDefault = 50;

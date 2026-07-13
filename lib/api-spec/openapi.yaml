@@ -936,6 +936,319 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ── PAYMENTS ──────────────────────────────────────────────────────────────
+  # Webhook/redirect endpoints (GET /payments/callback, POST
+  # /payments/mpesa/callback) are provider-invoked, never called by a client,
+  # and are deliberately omitted from this client-facing contract.
+  /payments/init:
+    post:
+      operationId: initTicketPayment
+      tags: [payments]
+      summary: Initialize a Paystack transaction for a ticket purchase (card / bank / USSD)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitPaymentRequest"
+      responses:
+        "200":
+          description: Payment initialized — simulated:true (no authorizationUrl) when Paystack isn't configured outside production
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitPaymentResponse"
+        "400":
+          description: eventId or ticketTypeId missing, or not enough tickets remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/verify:
+    post:
+      operationId: verifyTicketPayment
+      tags: [payments]
+      summary: Verify a Paystack payment and atomically issue the ticket
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPaymentRequest"
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketIssueResponse"
+        "400":
+          description: Missing fields, or the verified charge amount/currency doesn't match the requested ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Payment could not be verified with Paystack
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Sold out — no inventory left to issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/mpesa/stk-push:
+    post:
+      operationId: mpesaStkPush
+      tags: [payments]
+      summary: Trigger a Safaricom M-Pesa STK Push prompt on the buyer's phone
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MpesaStkPushRequest"
+      responses:
+        "200":
+          description: STK Push sent — poll POST /payments/mpesa/verify for the result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MpesaStkPushResult"
+        "400":
+          description: Missing fields, invalid phone number, or not enough tickets remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: The M-Pesa gateway rejected the request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/mpesa/verify:
+    post:
+      operationId: mpesaVerify
+      tags: [payments]
+      summary: Poll an M-Pesa STK Push result; issues the ticket once confirmed
+      description: >-
+        Quantity, price, and currency are read from the pending-payment row
+        written at stk-push time, never re-supplied by the caller — the
+        M-Pesa STK query response carries no amount, so trusting a
+        client-supplied quantity here would let a buyer pay for one ticket
+        and verify a larger quantity for free.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferenceOnlyRequest"
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketIssueResponse"
+        "400":
+          description: Unknown or expired payment reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/momo/request:
+    post:
+      operationId: momoRequestToPay
+      tags: [payments]
+      summary: Initiate an MTN Mobile Money Request-to-Pay
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoMoRequestRequest"
+      responses:
+        "200":
+          description: MoMo request sent — poll POST /payments/momo/verify for the result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoMoRequestResponse"
+        "400":
+          description: Missing fields, invalid phone number, or not enough tickets remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Event or ticket type not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: The MoMo gateway rejected the request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/momo/verify:
+    post:
+      operationId: momoVerify
+      tags: [payments]
+      summary: Poll an MTN MoMo Request-to-Pay result; issues the ticket once confirmed
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferenceOnlyRequest"
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketIssueResponse"
+        "202":
+          description: Still pending — poll again shortly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentPendingResponse"
+        "400":
+          description: Unknown or expired payment reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: MoMo payment was declined or failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/pass/init:
+    post:
+      operationId: initPassPayment
+      tags: [payments]
+      summary: Initialize a Paystack transaction for a KULTR PASS purchase (fixed price, not client-supplied)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Payment initialized — simulated:true (no authorizationUrl) when Paystack isn't configured outside production
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassPaymentInitResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/pass/verify:
+    post:
+      operationId: verifyPassPayment
+      tags: [payments]
+      summary: Verify a KULTR PASS payment — does not itself grant the entitlement, see POST /pass/activate
+      description: >-
+        Idempotent: replaying with an already-verified or already-consumed
+        reference just confirms success again rather than erroring.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferenceOnlyRequest"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassPaymentVerifyResponse"
+        "400":
+          description: reference missing, unknown, or the verified charge amount doesn't match the KULTR PASS price
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Payment could not be verified with Paystack
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: This payment reference belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── NOTIFICATIONS ─────────────────────────────────────────────────────────
   /notifications:
     get:
@@ -2221,4 +2534,179 @@ components:
           type: string
           enum: [paid, failed, cancelled]
         resolutionNote:
+          type: string
+
+    # ── PAYMENTS ─────────────────────────────────────────────────────────────
+    InitPaymentRequest:
+      type: object
+      required: [eventId, ticketTypeId]
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        quantity:
+          type: integer
+          default: 1
+
+    InitPaymentResponse:
+      type: object
+      required: [reference, authorizationUrl, simulated, totalAmount, currency]
+      properties:
+        reference:
+          type: string
+        authorizationUrl:
+          type: string
+          nullable: true
+          description: Redirect the buyer here to complete payment. Null when simulated.
+        simulated:
+          type: boolean
+          description: True only when Paystack is unconfigured AND NODE_ENV is not production.
+        totalAmount:
+          type: number
+        currency:
+          type: string
+
+    VerifyPaymentRequest:
+      type: object
+      required: [reference, eventId, ticketTypeId]
+      properties:
+        reference:
+          type: string
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        quantity:
+          type: integer
+          default: 1
+
+    TicketIssueResponse:
+      type: object
+      required: [ticketId, ticketNumber, status, totalAmount, currency]
+      properties:
+        ticketId:
+          type: string
+        ticketNumber:
+          type: string
+        status:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+
+    ReferenceOnlyRequest:
+      type: object
+      required: [reference]
+      properties:
+        reference:
+          type: string
+
+    MpesaStkPushRequest:
+      type: object
+      required: [eventId, ticketTypeId, phone]
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        phone:
+          type: string
+        countryCode:
+          type: string
+          description: Defaults to the caller's stored country if omitted.
+        quantity:
+          type: integer
+          default: 1
+
+    MpesaStkPushResult:
+      type: object
+      required: [checkoutRequestId, merchantRequestId, reference, simulated, totalAmount, currency, customerMessage]
+      properties:
+        checkoutRequestId:
+          type: string
+        merchantRequestId:
+          type: string
+        reference:
+          type: string
+        simulated:
+          type: boolean
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        customerMessage:
+          type: string
+
+    MoMoRequestRequest:
+      type: object
+      required: [eventId, ticketTypeId, phone]
+      properties:
+        eventId:
+          type: string
+        ticketTypeId:
+          type: string
+        phone:
+          type: string
+        countryCode:
+          type: string
+          description: Defaults to the caller's stored country if omitted.
+        quantity:
+          type: integer
+          default: 1
+
+    MoMoRequestResponse:
+      type: object
+      required: [referenceId, reference, simulated, totalAmount, currency, customerMessage]
+      properties:
+        referenceId:
+          type: string
+        reference:
+          type: string
+        simulated:
+          type: boolean
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        customerMessage:
+          type: string
+
+    PaymentPendingResponse:
+      type: object
+      required: [message, status]
+      properties:
+        message:
+          type: string
+        status:
+          type: string
+          enum: [PENDING]
+
+    PassPaymentInitResponse:
+      type: object
+      required: [reference, authorizationUrl, simulated, amount, currency]
+      properties:
+        reference:
+          type: string
+        authorizationUrl:
+          type: string
+          nullable: true
+          description: Redirect the buyer here to complete payment. Null when simulated.
+        simulated:
+          type: boolean
+          description: True only when Paystack is unconfigured AND NODE_ENV is not production.
+        amount:
+          type: number
+          description: Fixed KULTR PASS price — never client-supplied.
+        currency:
+          type: string
+
+    PassPaymentVerifyResponse:
+      type: object
+      required: [verified, reference]
+      properties:
+        verified:
+          type: boolean
+        reference:
           type: string

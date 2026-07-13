@@ -595,6 +595,106 @@ export interface ResolvePayoutRequest {
   resolutionNote?: string;
 }
 
+export interface InitPaymentRequest {
+  eventId: string;
+  ticketTypeId: string;
+  quantity?: number;
+}
+
+export interface InitPaymentResponse {
+  reference: string;
+  /** Redirect the buyer here to complete payment. Null when simulated. */
+  authorizationUrl: string | null;
+  /** True only when Paystack is unconfigured AND NODE_ENV is not production. */
+  simulated: boolean;
+  totalAmount: number;
+  currency: string;
+}
+
+export interface VerifyPaymentRequest {
+  reference: string;
+  eventId: string;
+  ticketTypeId: string;
+  quantity?: number;
+}
+
+export interface TicketIssueResponse {
+  ticketId: string;
+  ticketNumber: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+}
+
+export interface ReferenceOnlyRequest {
+  reference: string;
+}
+
+export interface MpesaStkPushRequest {
+  eventId: string;
+  ticketTypeId: string;
+  phone: string;
+  /** Defaults to the caller's stored country if omitted. */
+  countryCode?: string;
+  quantity?: number;
+}
+
+export interface MpesaStkPushResult {
+  checkoutRequestId: string;
+  merchantRequestId: string;
+  reference: string;
+  simulated: boolean;
+  totalAmount: number;
+  currency: string;
+  customerMessage: string;
+}
+
+export interface MoMoRequestRequest {
+  eventId: string;
+  ticketTypeId: string;
+  phone: string;
+  /** Defaults to the caller's stored country if omitted. */
+  countryCode?: string;
+  quantity?: number;
+}
+
+export interface MoMoRequestResponse {
+  referenceId: string;
+  reference: string;
+  simulated: boolean;
+  totalAmount: number;
+  currency: string;
+  customerMessage: string;
+}
+
+export type PaymentPendingResponseStatus =
+  (typeof PaymentPendingResponseStatus)[keyof typeof PaymentPendingResponseStatus];
+
+export const PaymentPendingResponseStatus = {
+  PENDING: "PENDING",
+} as const;
+
+export interface PaymentPendingResponse {
+  message: string;
+  status: PaymentPendingResponseStatus;
+}
+
+export interface PassPaymentInitResponse {
+  reference: string;
+  /** Redirect the buyer here to complete payment. Null when simulated. */
+  authorizationUrl: string | null;
+  /** True only when Paystack is unconfigured AND NODE_ENV is not production. */
+  simulated: boolean;
+  /** Fixed KULTR PASS price — never client-supplied. */
+  amount: number;
+  currency: string;
+}
+
+export interface PassPaymentVerifyResponse {
+  verified: boolean;
+  reference: string;
+}
+
 export type ListEventsParams = {
   category?: string;
   city?: string;

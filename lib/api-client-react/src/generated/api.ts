@@ -35,11 +35,17 @@ import type {
   GamificationProfile,
   GetFxRatesParams,
   HealthStatus,
+  InitPaymentRequest,
+  InitPaymentResponse,
   LedgerResponse,
   ListAllEventsAdminParams,
   ListEventsParams,
   ListNotificationsParams,
   LoginRequest,
+  MoMoRequestRequest,
+  MoMoRequestResponse,
+  MpesaStkPushRequest,
+  MpesaStkPushResult,
   NotificationListResponse,
   NotificationReadStatus,
   OtpRequest,
@@ -47,6 +53,9 @@ import type {
   OtpVerifyRequest,
   PassActivateRequest,
   PassActivateResponse,
+  PassPaymentInitResponse,
+  PassPaymentVerifyResponse,
+  PaymentPendingResponse,
   PayoutBalanceResponse,
   PayoutListResponse,
   PayoutView,
@@ -54,11 +63,13 @@ import type {
   PublicUserProfile,
   PurchaseTicketRequest,
   QuestProgress,
+  ReferenceOnlyRequest,
   ResolveEventReportRequest,
   ResolvePayoutRequest,
   SearchEventsParams,
   SignupRequest,
   TicketDetail,
+  TicketIssueResponse,
   TicketListResponse,
   UnlockPerkRequest,
   UnlockPerkResponse,
@@ -67,6 +78,7 @@ import type {
   UserProfile,
   VerifyOrganizerRequest,
   VerifyOrganizerResponse,
+  VerifyPaymentRequest,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2802,6 +2814,694 @@ export const useActivatePass = <
   TContext
 > => {
   return useMutation(getActivatePassMutationOptions(options));
+};
+
+/**
+ * @summary Initialize a Paystack transaction for a ticket purchase (card / bank / USSD)
+ */
+export const getInitTicketPaymentUrl = () => {
+  return `/api/payments/init`;
+};
+
+export const initTicketPayment = async (
+  initPaymentRequest: InitPaymentRequest,
+  options?: RequestInit,
+): Promise<InitPaymentResponse> => {
+  return customFetch<InitPaymentResponse>(getInitTicketPaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(initPaymentRequest),
+  });
+};
+
+export const getInitTicketPaymentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initTicketPayment>>,
+    TError,
+    { data: BodyType<InitPaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initTicketPayment>>,
+  TError,
+  { data: BodyType<InitPaymentRequest> },
+  TContext
+> => {
+  const mutationKey = ["initTicketPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initTicketPayment>>,
+    { data: BodyType<InitPaymentRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return initTicketPayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitTicketPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initTicketPayment>>
+>;
+export type InitTicketPaymentMutationBody = BodyType<InitPaymentRequest>;
+export type InitTicketPaymentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Initialize a Paystack transaction for a ticket purchase (card / bank / USSD)
+ */
+export const useInitTicketPayment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initTicketPayment>>,
+    TError,
+    { data: BodyType<InitPaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initTicketPayment>>,
+  TError,
+  { data: BodyType<InitPaymentRequest> },
+  TContext
+> => {
+  return useMutation(getInitTicketPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Verify a Paystack payment and atomically issue the ticket
+ */
+export const getVerifyTicketPaymentUrl = () => {
+  return `/api/payments/verify`;
+};
+
+export const verifyTicketPayment = async (
+  verifyPaymentRequest: VerifyPaymentRequest,
+  options?: RequestInit,
+): Promise<TicketIssueResponse> => {
+  return customFetch<TicketIssueResponse>(getVerifyTicketPaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyPaymentRequest),
+  });
+};
+
+export const getVerifyTicketPaymentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyTicketPayment>>,
+    TError,
+    { data: BodyType<VerifyPaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyTicketPayment>>,
+  TError,
+  { data: BodyType<VerifyPaymentRequest> },
+  TContext
+> => {
+  const mutationKey = ["verifyTicketPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyTicketPayment>>,
+    { data: BodyType<VerifyPaymentRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyTicketPayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyTicketPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyTicketPayment>>
+>;
+export type VerifyTicketPaymentMutationBody = BodyType<VerifyPaymentRequest>;
+export type VerifyTicketPaymentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify a Paystack payment and atomically issue the ticket
+ */
+export const useVerifyTicketPayment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyTicketPayment>>,
+    TError,
+    { data: BodyType<VerifyPaymentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyTicketPayment>>,
+  TError,
+  { data: BodyType<VerifyPaymentRequest> },
+  TContext
+> => {
+  return useMutation(getVerifyTicketPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Trigger a Safaricom M-Pesa STK Push prompt on the buyer's phone
+ */
+export const getMpesaStkPushUrl = () => {
+  return `/api/payments/mpesa/stk-push`;
+};
+
+export const mpesaStkPush = async (
+  mpesaStkPushRequest: MpesaStkPushRequest,
+  options?: RequestInit,
+): Promise<MpesaStkPushResult> => {
+  return customFetch<MpesaStkPushResult>(getMpesaStkPushUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(mpesaStkPushRequest),
+  });
+};
+
+export const getMpesaStkPushMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mpesaStkPush>>,
+    TError,
+    { data: BodyType<MpesaStkPushRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof mpesaStkPush>>,
+  TError,
+  { data: BodyType<MpesaStkPushRequest> },
+  TContext
+> => {
+  const mutationKey = ["mpesaStkPush"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof mpesaStkPush>>,
+    { data: BodyType<MpesaStkPushRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return mpesaStkPush(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MpesaStkPushMutationResult = NonNullable<
+  Awaited<ReturnType<typeof mpesaStkPush>>
+>;
+export type MpesaStkPushMutationBody = BodyType<MpesaStkPushRequest>;
+export type MpesaStkPushMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Trigger a Safaricom M-Pesa STK Push prompt on the buyer's phone
+ */
+export const useMpesaStkPush = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mpesaStkPush>>,
+    TError,
+    { data: BodyType<MpesaStkPushRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof mpesaStkPush>>,
+  TError,
+  { data: BodyType<MpesaStkPushRequest> },
+  TContext
+> => {
+  return useMutation(getMpesaStkPushMutationOptions(options));
+};
+
+/**
+ * Quantity, price, and currency are read from the pending-payment row written at stk-push time, never re-supplied by the caller — the M-Pesa STK query response carries no amount, so trusting a client-supplied quantity here would let a buyer pay for one ticket and verify a larger quantity for free.
+ * @summary Poll an M-Pesa STK Push result; issues the ticket once confirmed
+ */
+export const getMpesaVerifyUrl = () => {
+  return `/api/payments/mpesa/verify`;
+};
+
+export const mpesaVerify = async (
+  referenceOnlyRequest: ReferenceOnlyRequest,
+  options?: RequestInit,
+): Promise<TicketIssueResponse> => {
+  return customFetch<TicketIssueResponse>(getMpesaVerifyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(referenceOnlyRequest),
+  });
+};
+
+export const getMpesaVerifyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mpesaVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof mpesaVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  const mutationKey = ["mpesaVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof mpesaVerify>>,
+    { data: BodyType<ReferenceOnlyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return mpesaVerify(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MpesaVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof mpesaVerify>>
+>;
+export type MpesaVerifyMutationBody = BodyType<ReferenceOnlyRequest>;
+export type MpesaVerifyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Poll an M-Pesa STK Push result; issues the ticket once confirmed
+ */
+export const useMpesaVerify = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof mpesaVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof mpesaVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  return useMutation(getMpesaVerifyMutationOptions(options));
+};
+
+/**
+ * @summary Initiate an MTN Mobile Money Request-to-Pay
+ */
+export const getMomoRequestToPayUrl = () => {
+  return `/api/payments/momo/request`;
+};
+
+export const momoRequestToPay = async (
+  moMoRequestRequest: MoMoRequestRequest,
+  options?: RequestInit,
+): Promise<MoMoRequestResponse> => {
+  return customFetch<MoMoRequestResponse>(getMomoRequestToPayUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moMoRequestRequest),
+  });
+};
+
+export const getMomoRequestToPayMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof momoRequestToPay>>,
+    TError,
+    { data: BodyType<MoMoRequestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof momoRequestToPay>>,
+  TError,
+  { data: BodyType<MoMoRequestRequest> },
+  TContext
+> => {
+  const mutationKey = ["momoRequestToPay"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof momoRequestToPay>>,
+    { data: BodyType<MoMoRequestRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return momoRequestToPay(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MomoRequestToPayMutationResult = NonNullable<
+  Awaited<ReturnType<typeof momoRequestToPay>>
+>;
+export type MomoRequestToPayMutationBody = BodyType<MoMoRequestRequest>;
+export type MomoRequestToPayMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Initiate an MTN Mobile Money Request-to-Pay
+ */
+export const useMomoRequestToPay = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof momoRequestToPay>>,
+    TError,
+    { data: BodyType<MoMoRequestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof momoRequestToPay>>,
+  TError,
+  { data: BodyType<MoMoRequestRequest> },
+  TContext
+> => {
+  return useMutation(getMomoRequestToPayMutationOptions(options));
+};
+
+/**
+ * @summary Poll an MTN MoMo Request-to-Pay result; issues the ticket once confirmed
+ */
+export const getMomoVerifyUrl = () => {
+  return `/api/payments/momo/verify`;
+};
+
+export const momoVerify = async (
+  referenceOnlyRequest: ReferenceOnlyRequest,
+  options?: RequestInit,
+): Promise<TicketIssueResponse | PaymentPendingResponse> => {
+  return customFetch<TicketIssueResponse | PaymentPendingResponse>(
+    getMomoVerifyUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(referenceOnlyRequest),
+    },
+  );
+};
+
+export const getMomoVerifyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof momoVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof momoVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  const mutationKey = ["momoVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof momoVerify>>,
+    { data: BodyType<ReferenceOnlyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return momoVerify(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MomoVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof momoVerify>>
+>;
+export type MomoVerifyMutationBody = BodyType<ReferenceOnlyRequest>;
+export type MomoVerifyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Poll an MTN MoMo Request-to-Pay result; issues the ticket once confirmed
+ */
+export const useMomoVerify = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof momoVerify>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof momoVerify>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  return useMutation(getMomoVerifyMutationOptions(options));
+};
+
+/**
+ * @summary Initialize a Paystack transaction for a KULTR PASS purchase (fixed price, not client-supplied)
+ */
+export const getInitPassPaymentUrl = () => {
+  return `/api/payments/pass/init`;
+};
+
+export const initPassPayment = async (
+  options?: RequestInit,
+): Promise<PassPaymentInitResponse> => {
+  return customFetch<PassPaymentInitResponse>(getInitPassPaymentUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getInitPassPaymentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initPassPayment>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initPassPayment>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["initPassPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initPassPayment>>,
+    void
+  > = () => {
+    return initPassPayment(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitPassPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initPassPayment>>
+>;
+
+export type InitPassPaymentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Initialize a Paystack transaction for a KULTR PASS purchase (fixed price, not client-supplied)
+ */
+export const useInitPassPayment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initPassPayment>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initPassPayment>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getInitPassPaymentMutationOptions(options));
+};
+
+/**
+ * Idempotent: replaying with an already-verified or already-consumed reference just confirms success again rather than erroring.
+ * @summary Verify a KULTR PASS payment — does not itself grant the entitlement, see POST /pass/activate
+ */
+export const getVerifyPassPaymentUrl = () => {
+  return `/api/payments/pass/verify`;
+};
+
+export const verifyPassPayment = async (
+  referenceOnlyRequest: ReferenceOnlyRequest,
+  options?: RequestInit,
+): Promise<PassPaymentVerifyResponse> => {
+  return customFetch<PassPaymentVerifyResponse>(getVerifyPassPaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(referenceOnlyRequest),
+  });
+};
+
+export const getVerifyPassPaymentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyPassPayment>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyPassPayment>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  const mutationKey = ["verifyPassPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyPassPayment>>,
+    { data: BodyType<ReferenceOnlyRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyPassPayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyPassPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyPassPayment>>
+>;
+export type VerifyPassPaymentMutationBody = BodyType<ReferenceOnlyRequest>;
+export type VerifyPassPaymentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify a KULTR PASS payment — does not itself grant the entitlement, see POST /pass/activate
+ */
+export const useVerifyPassPayment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyPassPayment>>,
+    TError,
+    { data: BodyType<ReferenceOnlyRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyPassPayment>>,
+  TError,
+  { data: BodyType<ReferenceOnlyRequest> },
+  TContext
+> => {
+  return useMutation(getVerifyPassPaymentMutationOptions(options));
 };
 
 /**
